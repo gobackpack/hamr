@@ -1,0 +1,2 @@
+# hamr
+Authentication library
