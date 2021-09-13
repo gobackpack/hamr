@@ -1,0 +1,17 @@
+database:
+  connstring: host=localhost port=5432 dbname=my_db_name user=postgres password=postgres sslmode=disable
+auth:
+  provider:
+    google:
+      client_id: 212763908463-e0tpnd2jjaqusrj3svfgcp1m792etivb.apps.googleusercontent.com
+      client_secret: SOIHmffrwyTqN0QzDfIuaJqq
+    github:
+      client_id:
+      client_secret:
+  state_expiry: 2 # minutes
+  access_token:
+    secret: secret-access-token-123
+    expiry: 15 # minutes
+  refresh_token:
+    secret: secret-refresh-token-213
+    expiry: 10080 # minutes
