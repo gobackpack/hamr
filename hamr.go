@@ -35,7 +35,7 @@ type Config struct {
 	EnableLocalLogin bool
 
 	adapter *gormadapter.Adapter
-	locker sync.Mutex
+	locker  sync.Mutex
 }
 
 // New will initialize *auth api
@@ -54,9 +54,9 @@ func New(config *Config) *auth {
 			accessTokenExpiry:  time.Minute * time.Duration(viper.GetInt("auth.access_token.expiry")),
 			refreshTokenSecret: []byte(viper.GetString("auth.refresh_token.secret")),
 			refreshTokenExpiry: time.Minute * time.Duration(viper.GetInt("auth.refresh_token.expiry")),
+			db:                 config.Db,
 			cache:              config.CacheStorage,
 			casbinAdapter:      adapter,
-			db:                 config.Db,
 		},
 	}
 

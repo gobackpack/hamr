@@ -24,3 +24,4 @@ INSERT INTO casbin_rule(ptype, v0, v1) VALUES('g', '1', 'admin');
 * [ ] Make *auth.User pluggable
 * [ ] Make refresh token api more elegant, simple (deleting old access and refresh tokens functionality)
 * [ ] Improve logging
+* [ ] Get rid of gin dependency
