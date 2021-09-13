@@ -82,6 +82,7 @@ func ServeHttp(addr string, router *gin.Engine) {
 	httpserver.ServeHttp(addr, router)
 }
 
+// InitializeViper default settings. Config path, type...
 func InitializeViper() {
 	viper.AddConfigPath(*Path)
 	viper.SetConfigName("app")
@@ -93,6 +94,8 @@ func InitializeViper() {
 	}
 }
 
+// RegisterProvider will append external.SupportedProviders with passed Provider.
+// Name must match settings in /config/app.yml
 func (auth *auth) RegisterProvider(name string, provider external.Provider) {
 	auth.config.locker.Lock()
 	external.SupportedProviders[name] = provider
