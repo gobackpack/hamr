@@ -6,8 +6,8 @@ auth:
       client_id: 212763908463-e0tpnd2jjaqusrj3svfgcp1m792etivb.apps.googleusercontent.com
       client_secret: SOIHmffrwyTqN0QzDfIuaJqq
     github:
-      client_id:
-      client_secret:
+      client_id: 0f08295be2677845e936
+      client_secret: b313ce977b07a6e25f778caa8ef8b286a03f2924
   state_expiry: 2 # minutes
   access_token:
     secret: secret-access-token-123

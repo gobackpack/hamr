@@ -5,11 +5,13 @@ import (
 	gormadapter "github.com/casbin/gorm-adapter/v3"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/gobackpack/hamr/external"
 	"github.com/gobackpack/hamr/internal/cache"
 	"github.com/gobackpack/hamr/internal/httpserver"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"gorm.io/gorm"
+	"sync"
 	"time"
 )
 
@@ -33,6 +35,7 @@ type Config struct {
 	EnableLocalLogin bool
 
 	adapter *gormadapter.Adapter
+	locker sync.Mutex
 }
 
 // New will initialize *auth api
@@ -88,6 +91,12 @@ func InitializeViper() {
 	if err := viper.ReadInConfig(); err != nil {
 		logrus.Fatal("viper failed to read config file: ", err)
 	}
+}
+
+func (auth *auth) RegisterProvider(name string, provider external.Provider) {
+	auth.config.locker.Lock()
+	external.SupportedProviders[name] = provider
+	auth.config.locker.Unlock()
 }
 
 // AuthorizeRequest is middleware to protect endpoints

@@ -18,7 +18,7 @@ const (
 	externalLoginAntiForgeryKey = "externalLoginAntiForgery"
 )
 
-var supportedProviders = map[string]Provider{
+var SupportedProviders = map[string]Provider{
 	"google": &providers.Google{},
 	"github": &providers.Github{},
 }
@@ -44,7 +44,7 @@ type OAuthClaims struct {
 
 // NewAuthenticator will setup *Authenticator, oAuth2 configuration
 func NewAuthenticator(provider, scheme, host, port, routeGroup string, ctx *gin.Context) (*Authenticator, error) {
-	providerInstance, ok := supportedProviders[provider]
+	providerInstance, ok := SupportedProviders[provider]
 	if !ok || providerInstance == nil {
 		return nil, errors.New("unsupported provider")
 	}

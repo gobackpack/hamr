@@ -4,6 +4,7 @@ import (
 	"flag"
 	"github.com/gin-gonic/gin"
 	"github.com/gobackpack/hamr"
+	"github.com/gobackpack/hamr/example/provider"
 	"github.com/spf13/viper"
 	"net/http"
 )
@@ -29,6 +30,8 @@ func main() {
 			viper.GetInt("auth.cache.db")),
 		EnableLocalLogin: true,
 	})
+
+	auth.RegisterProvider("github", provider.NewCustomGithub())
 
 	// example #1: protected with roles/policy
 	router.GET("protected/policy", auth.AuthorizeRequest("usr", "read", auth.CasbinAdapter()), func(ctx *gin.Context) {
