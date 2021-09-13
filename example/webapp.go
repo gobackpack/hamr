@@ -16,13 +16,17 @@ func main() {
 	router := hamr.NewRouter()
 
 	auth := hamr.New(&hamr.Config{
-		Scheme:           "http",
-		Host:             "localhost",
-		Port:             "8080",
-		RouteGroup:       "/api/auth",
-		Router:           router,
-		Db:               hamr.PostgresDb(viper.GetString("database.connstring")),
-		CacheStorage:     hamr.NewRedisCacheStorage("", "6379", "", 1),
+		Scheme:     "http",
+		Host:       "localhost",
+		Port:       "8080",
+		RouteGroup: "/api/auth",
+		Router:     router,
+		Db:         hamr.PostgresDb(viper.GetString("database.connstring")),
+		CacheStorage: hamr.NewRedisCacheStorage(
+			viper.GetString("auth.cache.redis.host"),
+			viper.GetString("auth.cache.redis.port"),
+			viper.GetString("auth.cache.redis.password"),
+			viper.GetInt("auth.cache.db")),
 		EnableLocalLogin: true,
 	})
 

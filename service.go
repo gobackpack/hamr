@@ -7,7 +7,6 @@ import (
 	"github.com/gobackpack/crypto"
 	"github.com/gobackpack/hamr/external"
 	"github.com/gobackpack/hamr/internal/cache"
-	"github.com/gobackpack/hamr/models"
 	"github.com/gobackpack/jwt"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -25,7 +24,7 @@ type service struct {
 	casbinAdapter *gormadapter.Adapter
 	db            *gorm.DB
 
-	PostRegisterCallback func(user *models.User) error
+	PostRegisterCallback func(user *User) error
 }
 
 // tokenDetails holds access and refresh token details
@@ -45,7 +44,7 @@ type tokenClaims map[string]interface{}
 type tokensMap map[string]string
 
 // registerUser will save user into database
-func (svc *service) registerUser(user *models.User) (*models.User, error) {
+func (svc *service) registerUser(user *User) (*User, error) {
 	existing := svc.getUserByEmail(user.Email)
 	if existing != nil {
 		return nil, errors.New(fmt.Sprintf("user email or username is already registered: %v, %v", user.Username, user.Email))
@@ -127,7 +126,7 @@ func (svc *service) authenticateExternal(externalClaims *external.OAuthClaims, p
 
 	user := svc.getUserByEmail(email)
 	if user == nil {
-		user = &models.User{
+		user = &User{
 			Email:            email,
 			Username:         email,
 			ExternalId:       externalId,
@@ -354,7 +353,7 @@ func (svc *service) extractRefreshTokenClaims(refreshToken string) (map[string]i
 }
 
 // validateCredentials will validate *User's password hash
-func validateCredentials(user *models.User, password string) bool {
+func validateCredentials(user *User, password string) bool {
 	argon := crypto.NewArgon2()
 
 	argon.Hashed = user.Password

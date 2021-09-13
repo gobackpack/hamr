@@ -7,7 +7,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gobackpack/hamr/internal/cache"
 	"github.com/gobackpack/hamr/internal/httpserver"
-	"github.com/gobackpack/hamr/migrations"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"gorm.io/gorm"
@@ -124,5 +123,8 @@ func (auth *auth) initializeRoutes() {
 
 // runMigrations will automatically run migrations from /migrations/
 func (auth *auth) runMigrations() {
-	migrations.Run(migrations.Collection, auth.config.Db)
+	err := auth.config.Db.AutoMigrate(&User{})
+	if err != nil {
+		logrus.Fatal("migrations failed: ", err)
+	}
 }

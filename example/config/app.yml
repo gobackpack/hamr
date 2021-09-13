@@ -15,3 +15,9 @@ auth:
   refresh_token:
     secret: secret-refresh-token-213
     expiry: 10080 # minutes
+  cache:
+    db: 1
+    redis:
+      host:
+      port: 6379
+      password:

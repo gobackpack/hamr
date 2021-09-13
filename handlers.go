@@ -3,7 +3,6 @@ package hamr
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/gobackpack/hamr/external"
-	"github.com/gobackpack/hamr/models"
 	"github.com/sirupsen/logrus"
 	"net/http"
 	"strings"
@@ -30,7 +29,7 @@ func (auth *auth) registerHandler(ctx *gin.Context) {
 		return
 	}
 
-	user, err := auth.service.registerUser(&models.User{
+	user, err := auth.service.registerUser(&User{
 		Username: req.email,
 		Email:    req.email,
 		Password: req.password,

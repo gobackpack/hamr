@@ -2,14 +2,28 @@ package hamr
 
 import (
 	"fmt"
-	"github.com/gobackpack/hamr/models"
+	"gorm.io/gorm"
 	"time"
 )
 
+// User of the system
+type User struct {
+	Id               uint `gorm:"primarykey"`
+	Username         string
+	Email            string
+	Password         string `json:"-"`
+	ExternalId       string
+	ExternalProvider string
+	Confirmed        bool
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+	DeletedAt        gorm.DeletedAt `gorm:"index"`
+}
+
 // getUserByEmail will get *User by email from database.
 // This user is used in authentication process (login: local + external) and in validation during registration process
-func (svc *service) getUserByEmail(email string) *models.User {
-	var usrEntity *models.User
+func (svc *service) getUserByEmail(email string) *User {
+	var usrEntity *User
 
 	if result := svc.db.Where("email", email).Find(&usrEntity); result.Error != nil {
 		return nil
@@ -23,7 +37,7 @@ func (svc *service) getUserByEmail(email string) *models.User {
 }
 
 // addUser will create new *User in database. During registration process or first time external login (auto-register)
-func (svc *service) addUser(user *models.User) error {
+func (svc *service) addUser(user *User) error {
 	tx := svc.db.Begin()
 	defer func() {
 		if r := recover(); r != nil {
@@ -51,7 +65,7 @@ func (svc *service) addUser(user *models.User) error {
 }
 
 // editUser will update *User. Used in authentication process (updating login provider and password)
-func (svc *service) editUser(user *models.User) error {
+func (svc *service) editUser(user *User) error {
 	tx := svc.db.Begin()
 	defer func() {
 		if r := recover(); r != nil {
