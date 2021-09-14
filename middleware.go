@@ -38,7 +38,7 @@ func (svc *service) authorize(obj, act string, adapter *gormadapter.Adapter) gin
 			return
 		}
 
-		accessTokenBytes, err := svc.cache.Get(accessTokenUuid.(string))
+		accessTokenCachedBytes, err := svc.cache.Get(accessTokenUuid.(string))
 		if err != nil {
 			logrus.Error("failed to get accessToken from cache: ", err)
 			ctx.AbortWithStatus(http.StatusUnauthorized)
@@ -46,9 +46,9 @@ func (svc *service) authorize(obj, act string, adapter *gormadapter.Adapter) gin
 		}
 
 		var accessTokenCached map[string]interface{}
-		if err = json.Unmarshal(accessTokenBytes, &accessTokenCached); err != nil {
+		if err = json.Unmarshal(accessTokenCachedBytes, &accessTokenCached); err != nil {
 			logrus.Error("failed to unmarshal accessTokenBytes: ", err)
-			logrus.Warn("accessTokenBytes: ", string(accessTokenBytes))
+			logrus.Warn("accessTokenBytes: ", string(accessTokenCachedBytes))
 			ctx.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
