@@ -274,29 +274,19 @@ func (svc *service) createAuth(claims tokenClaims) (tokensMap, error) {
 		"refresh_token_uuid": td.refreshTokenUuid,
 	}
 
-	accessTokenBytes, err := json.Marshal(accessTokenContent)
-	if err != nil {
-		return nil, err
-	}
-
 	refreshTokenContent := map[string]interface{}{
 		"sub":               claims["sub"],
 		"access_token_uuid": td.accessTokenUuid,
 	}
 
-	refreshTokenBytes, err := json.Marshal(refreshTokenContent)
-	if err != nil {
-		return nil, err
-	}
-
 	if err = svc.cache.Store(
 		&cache.Item{
 			Key:        td.accessTokenUuid,
-			Value:      string(accessTokenBytes),
+			Value:      accessTokenContent,
 			Expiration: td.accessTokenExpiry,
 		}, &cache.Item{
 			Key:        td.refreshTokenUuid,
-			Value:      string(refreshTokenBytes),
+			Value:      refreshTokenContent,
 			Expiration: td.refreshTokenExpiry,
 		}); err != nil {
 		return nil, err

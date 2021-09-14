@@ -24,24 +24,18 @@ func (storage *Storage) Store(items ...*cache.Item) error {
 	return nil
 }
 
-func (storage *Storage) Get(keys ...string) ([]byte, error) {
-	var result []byte
-
-	for _, k := range keys {
-		item, err := storage.Engine.Value(k)
-		if err != nil {
-			continue
-		}
-
-		bItem, err := json.Marshal(item.Data())
-		if err != nil {
-			continue
-		}
-
-		result = append(result, bItem...)
+func (storage *Storage) Get(key string) ([]byte, error) {
+	cacheValue, err := storage.Engine.Value(key)
+	if err != nil {
+		return nil, err
 	}
 
-	return result, nil
+	bItem, err := json.Marshal(cacheValue.Data())
+	if err != nil {
+		return nil, err
+	}
+
+	return bItem, nil
 }
 
 func (storage *Storage) Delete(keys ...string) error {

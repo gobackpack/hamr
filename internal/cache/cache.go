@@ -4,12 +4,12 @@ import "time"
 
 type Item struct {
 	Key        string
-	Value      interface{}
+	Value interface{}
 	Expiration time.Duration
 }
 
 type Storage interface {
 	Store(items ...*Item) error
-	Get(keys ...string) ([]byte, error)
+	Get(key string) ([]byte, error)
 	Delete(keys ...string) error
 }
