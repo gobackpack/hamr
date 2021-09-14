@@ -1,17 +1,12 @@
 package hamr
 
 import (
+	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/gobackpack/hamr/external"
 	"github.com/sirupsen/logrus"
 	"net/http"
 )
-
-// registerRequest http API model
-type registerRequest struct {
-	email    string
-	password string
-}
 
 // loginRequest http API model
 type loginRequest struct {
@@ -21,18 +16,24 @@ type loginRequest struct {
 
 // registerHandler maps to register route
 func (auth *auth) registerHandler(ctx *gin.Context) {
-	var req *registerRequest
-	if err := ctx.ShouldBind(&req); err != nil {
+	var requestData map[string]interface{}
+	if err := ctx.ShouldBind(&requestData); err != nil {
+		logrus.Error("registration failed, invalid data: ", err)
+		ctx.JSON(http.StatusUnprocessableEntity, "registration failed, invalid data")
+		return
+	}
+
+	if err := validateRequestData(requestData); err != nil {
 		logrus.Error("registration failed, invalid data: ", err)
 		ctx.JSON(http.StatusUnprocessableEntity, "registration failed, invalid data")
 		return
 	}
 
 	user, err := auth.service.registerUser(&User{
-		Username: req.email,
-		Email:    req.email,
-		Password: req.password,
-	})
+		Username: requestData["email"].(string),
+		Email:    requestData["email"].(string),
+		Password: requestData["password"].(string),
+	}, requestData)
 	if err != nil {
 		logrus.Error("registration failed, internal error: ", err)
 		ctx.JSON(http.StatusBadRequest, "registration failed, internal error")
@@ -149,4 +150,19 @@ func (auth *auth) externalLoginCallbackHandler(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, tokens)
+}
+
+// validateRequestData will check for required fields for registration flow
+func validateRequestData(requestData map[string]interface{}) error {
+	_, ok := requestData["email"]
+	if !ok {
+		return errors.New("missing email property")
+	}
+
+	_, ok = requestData["password"]
+	if !ok {
+		return errors.New("missing password property")
+	}
+
+	return nil
 }

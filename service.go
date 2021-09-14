@@ -25,7 +25,7 @@ type service struct {
 	casbinAdapter *gormadapter.Adapter
 	db            *gorm.DB
 
-	PostRegisterCallback func(user *User) error
+	PostRegisterCallback func(user *User, requestData map[string]interface{}) error
 }
 
 // tokenDetails holds access and refresh token details
@@ -46,7 +46,7 @@ type tokenClaims map[string]interface{}
 type tokensMap map[string]string
 
 // registerUser will save user into database
-func (svc *service) registerUser(user *User) (*User, error) {
+func (svc *service) registerUser(user *User, requestData map[string]interface{}) (*User, error) {
 	existing := svc.getUserByEmail(user.Email)
 	if existing != nil {
 		return nil, errors.New(fmt.Sprintf("user email or username is already registered: %v, %v", user.Username, user.Email))
@@ -66,7 +66,7 @@ func (svc *service) registerUser(user *User) (*User, error) {
 	}
 
 	if svc.PostRegisterCallback != nil {
-		if err := svc.PostRegisterCallback(user); err != nil {
+		if err := svc.PostRegisterCallback(user, requestData); err != nil {
 			return nil, err
 		}
 	}
@@ -141,7 +141,7 @@ func (svc *service) authenticateExternal(externalClaims *external.OAuthClaims, p
 		}
 
 		if svc.PostRegisterCallback != nil {
-			if err := svc.PostRegisterCallback(user); err != nil {
+			if err := svc.PostRegisterCallback(user, nil); err != nil {
 				return nil, err
 			}
 		}
