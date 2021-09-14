@@ -31,16 +31,18 @@ func main() {
 		EnableLocalLogin: true,
 	})
 
+	// register custom provider
+	// name property must match value from config/app.yml -> provider.github, provider.google...
 	auth.RegisterProvider("github", provider.NewCustomGithub())
 
-	// example #1: protected with roles/policy
-	router.GET("protected/policy", auth.AuthorizeRequest("usr", "read", auth.CasbinAdapter()), func(ctx *gin.Context) {
-		ctx.JSON(http.StatusOK, "policy protected")
-	})
-
-	// example #2: protected without roles/policy
+	// example #1: protected without roles/policy
 	router.GET("protected", auth.AuthorizeRequest("", "", nil), func(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, "protected")
+	})
+
+	// example #2: protected with roles/policy
+	router.GET("protected/policy", auth.AuthorizeRequest("usr", "read", auth.CasbinAdapter()), func(ctx *gin.Context) {
+		ctx.JSON(http.StatusOK, "policy protected")
 	})
 
 	hamr.ServeHttp(":8080", router)

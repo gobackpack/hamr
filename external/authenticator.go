@@ -19,11 +19,13 @@ const (
 	externalLoginAntiForgeryKey = "externalLoginAntiForgery"
 )
 
+// SupportedProviders are registered oAuth2 providers for external *Authenticator
 var SupportedProviders = map[string]Provider{
 	"google": &providers.Google{},
 	"github": &providers.Github{},
 }
 
+// Authenticator is responsible for external logins, oAuth2 configuration setup
 type Authenticator struct {
 	provider Provider
 	scheme   string
@@ -32,12 +34,14 @@ type Authenticator struct {
 	config   *oauth2.Config
 }
 
+// Provider specific requirements for external *Authenticator
 type Provider interface {
 	Scopes() []string
 	Endpoint() oauth2.Endpoint
 	GetUserData(string) (map[string]string, error)
 }
 
+// OAuthClaims are used to pass required claims for external login flow
 type OAuthClaims struct {
 	Id    string `json:"id"`
 	Email string `json:"email"`
