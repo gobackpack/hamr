@@ -18,12 +18,14 @@ func (svc *service) authorize(obj, act string, adapter *gormadapter.Adapter) gin
 	return func(ctx *gin.Context) {
 		_, token := getAccessTokenFromRequest(ctx)
 		if strings.TrimSpace(token) == "" {
+			logrus.Error("token not found")
 			ctx.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
 
 		claims, valid := svc.extractAccessTokenClaims(token)
 		if claims == nil || !valid {
+			logrus.Error("invalid access token claims, valid: ", valid)
 			ctx.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
@@ -31,28 +33,34 @@ func (svc *service) authorize(obj, act string, adapter *gormadapter.Adapter) gin
 		userIdFromRequestClaims := claims["sub"]
 		accessTokenUuid := claims["uuid"]
 		if userIdFromRequestClaims == nil || accessTokenUuid == nil {
+			logrus.Error("userId or accessTokenUuid is nil")
 			ctx.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
 
 		accessTokenBytes, err := svc.cache.Get(accessTokenUuid.(string))
 		if err != nil {
+			logrus.Error("failed to get accessToken from cache: ", err)
 			ctx.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
 
 		var accessTokenCached map[string]interface{}
 		if err = json.Unmarshal(accessTokenBytes, &accessTokenCached); err != nil {
+			logrus.Error("failed to unmarshal accessTokenBytes: ", err)
+			logrus.Warn("accessTokenBytes: ", string(accessTokenBytes))
 			ctx.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
 		userIdFromCacheClaims, ok := accessTokenCached["sub"]
 		if !ok {
+			logrus.Error("sub not found in accessTokenCached")
 			ctx.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
 
 		if userIdFromRequestClaims.(float64) != userIdFromCacheClaims.(float64) {
+			logrus.Error("userIdFromRequestClaims does not match userIdFromCacheClaims")
 			ctx.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
@@ -62,6 +70,7 @@ func (svc *service) authorize(obj, act string, adapter *gormadapter.Adapter) gin
 
 			// enforce Casbin policy
 			if policyOk, policyErr := enforce(id, obj, act, adapter); policyErr != nil || !policyOk {
+				logrus.Error("casbin policy not passed, err: ", policyErr)
 				ctx.AbortWithStatus(http.StatusUnauthorized)
 				return
 			}
