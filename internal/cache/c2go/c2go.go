@@ -30,12 +30,12 @@ func (storage *Storage) Get(key string) ([]byte, error) {
 		return nil, err
 	}
 
-	bItem, err := json.Marshal(cacheValue.Data())
+	cacheValueBytes, err := json.Marshal(cacheValue.Data())
 	if err != nil {
 		return nil, err
 	}
 
-	return bItem, nil
+	return cacheValueBytes, nil
 }
 
 func (storage *Storage) Delete(keys ...string) error {
