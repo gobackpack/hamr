@@ -37,10 +37,11 @@ type tokenDetails struct {
 	refreshTokenExpiry time.Duration
 }
 
-// tokenClaims contains required claims/properties for authentication (sub + email). Validated in: validateClaims(claims tokenClaims)
+// tokenClaims contains required claims for authentication (sub + email). Validated in: validateClaims(claims tokenClaims).
+// These claims will be generated in access and refresh tokens
 type tokenClaims map[string]interface{}
 
-// tokensMap contains generated access_token and refresh_token after authentication. These token pairs are returned to the user
+// tokensMap contains pair of access_token and refresh_token after authentication. These token pairs are returned to the user
 type tokensMap map[string]string
 
 // registerUser will save user into database
@@ -72,7 +73,7 @@ func (svc *service) registerUser(user *User) (*User, error) {
 	return user, nil
 }
 
-// authenticate will login user. Validate credentials and save tokens in cache
+// authenticate will use local login (email + pwd) to login user. Validate credentials and save tokens in cache
 func (svc *service) authenticate(email, password string) (tokensMap, error) {
 	user := svc.getUserByEmail(email)
 	if user == nil {
