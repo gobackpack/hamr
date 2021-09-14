@@ -49,6 +49,15 @@ func main() {
 	// can be used to update other user fields during registration flow
 	auth.PostRegisterCallback = func(user *hamr.User, requestData map[string]interface{}) error {
 		logrus.Info("requestData: ", requestData)
+		/*
+			post request body
+			{
+			    "email": "myemail@gmail.com",
+			    "password": "test123",
+			    "age": 30,
+			    "phone_number": 123456
+			}
+		*/
 
 		age, _ := strconv.Atoi(fmt.Sprint(requestData["age"]))
 		phone, _ := strconv.Atoi(fmt.Sprint(requestData["phone_number"]))
