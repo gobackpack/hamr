@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/viper"
 	"golang.org/x/oauth2"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -49,6 +50,9 @@ func NewAuthenticator(provider, scheme, host, port, routeGroup string, ctx *gin.
 		return nil, errors.New("unsupported provider")
 	}
 
+	host = strings.Trim(host, "/")
+	routeGroup = strings.Trim(routeGroup, "/")
+
 	authenticator := &Authenticator{
 		provider: providerInstance,
 		scheme:   scheme,
@@ -57,7 +61,7 @@ func NewAuthenticator(provider, scheme, host, port, routeGroup string, ctx *gin.
 		config: &oauth2.Config{
 			ClientID:     viper.GetString("auth.provider." + provider + ".client_id"),
 			ClientSecret: viper.GetString("auth.provider." + provider + ".client_secret"),
-			RedirectURL:  scheme + "://" + host + ":" + port + routeGroup + "/" + provider + "/callback",
+			RedirectURL:  scheme + "://" + host + ":" + port + "/" + routeGroup + "/" + provider + "/callback",
 			Scopes:       providerInstance.Scopes(),
 			Endpoint:     providerInstance.Endpoint(),
 		},
