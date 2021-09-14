@@ -15,7 +15,7 @@ import (
 // If adapter is passed Casbin policy will be checked as well
 func (svc *service) authorize(obj, act string, adapter *gormadapter.Adapter) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		token, _ := getAccessTokenFromRequest(ctx)
+		_, token := getAccessTokenFromRequest(ctx)
 		if strings.TrimSpace(token) == "" {
 			ctx.AbortWithStatus(http.StatusUnauthorized)
 			return
@@ -73,7 +73,7 @@ func getAccessTokenFromRequest(ctx *gin.Context) (string, string) {
 		return "", ""
 	}
 
-	return token, schema
+	return schema, token
 }
 
 // enforce Casbin policy

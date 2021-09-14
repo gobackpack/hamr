@@ -64,7 +64,7 @@ func (auth *auth) loginHandler(ctx *gin.Context) {
 
 // logoutHandler maps to logout route
 func (auth *auth) logoutHandler(ctx *gin.Context) {
-	accessToken, _ := getAccessTokenFromRequest(ctx)
+	_, accessToken := getAccessTokenFromRequest(ctx)
 
 	logoutRequest := map[string]string{}
 	if err := ctx.ShouldBindJSON(&logoutRequest); err != nil {
