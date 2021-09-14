@@ -1,6 +1,7 @@
 package hamr
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	gormadapter "github.com/casbin/gorm-adapter/v3"
@@ -166,15 +167,10 @@ func (svc *service) authenticateExternal(externalClaims *external.OAuthClaims, p
 }
 
 // destroyAuthenticationSession will logout user. Remove access and refresh tokens from cache
-func (svc *service) destroyAuthenticationSession(accessToken, refreshToken string) error {
+func (svc *service) destroyAuthenticationSession(accessToken string) error {
 	accessTokenClaims, aValid := svc.extractAccessTokenClaims(accessToken)
 	if !aValid {
 		return errors.New("invalid access_token")
-	}
-
-	refreshTokenClaims, rValid := svc.extractRefreshTokenClaims(refreshToken)
-	if !rValid {
-		return errors.New("invalid refresh_token")
 	}
 
 	accessTokenUuid := accessTokenClaims["uuid"]
@@ -183,17 +179,22 @@ func (svc *service) destroyAuthenticationSession(accessToken, refreshToken strin
 		return errors.New("invalid claims from access_token")
 	}
 
-	refreshTokenUuid := refreshTokenClaims["uuid"]
-	refreshTokenUserId := refreshTokenClaims["sub"]
-	if refreshTokenUuid == nil || refreshTokenUserId == nil {
-		return errors.New("invalid claims from refresh_token")
+	accessTokenCachedBytes, err := svc.cache.Get(accessTokenUuid.(string))
+	if err != nil {
+		return err
 	}
 
-	if accessTokenUserId != refreshTokenUserId {
-		return errors.New("access_token sub does not match refresh_token sub")
+	var accessTokenCached map[string]interface{}
+	if err = json.Unmarshal(accessTokenCachedBytes, &accessTokenCached); err != nil {
+		return err
 	}
 
-	if err := svc.cache.Delete(fmt.Sprint(accessTokenUuid), fmt.Sprint(refreshTokenUuid)); err != nil {
+	refreshTokenUuid, ok := accessTokenCached["refresh_token_uuid"]
+	if !ok {
+		return errors.New("refresh_token_uuid not found in cached access_token")
+	}
+
+	if err = svc.cache.Delete(accessTokenUuid.(string), refreshTokenUuid.(string)); err != nil {
 		return err
 	}
 
@@ -201,7 +202,7 @@ func (svc *service) destroyAuthenticationSession(accessToken, refreshToken strin
 }
 
 // refreshToken will generate new pair of access and refresh tokens. Remove old access and refresh tokens from cache
-func (svc *service) refreshToken(accessToken, refreshToken string) (tokensMap, error) {
+func (svc *service) refreshToken(refreshToken string) (tokensMap, error) {
 	// get old refresh token uuid so it can be deleted from cache
 	refreshTokenClaims, valid := svc.extractRefreshTokenClaims(refreshToken)
 	if !valid {
@@ -216,28 +217,28 @@ func (svc *service) refreshToken(accessToken, refreshToken string) (tokensMap, e
 	}
 
 	// make sure refresh token is still active
-	_, err := svc.cache.Get(fmt.Sprint(refreshTokenUuid))
+	refreshTokenCachedBytes, err := svc.cache.Get(refreshTokenUuid.(string))
 	if err != nil {
 		return nil, errors.New("refresh_token is no longer active")
 	}
 
 	// get old access token uuid so it can be deleted from cache
 	// we do not need to validate it - it's already expired, probably does not even exists!
-	accessTokenClaims, _ := svc.extractAccessTokenClaims(accessToken)
-	accessTokenUuid := accessTokenClaims["uuid"]
-	accessTokenUserId := accessTokenClaims["sub"]
-	if accessTokenUuid == nil || accessTokenUserId == nil {
-		return nil, errors.New("invalid claims from access_token")
+
+	var refreshTokenCached map[string]interface{}
+	if err = json.Unmarshal(refreshTokenCachedBytes, &refreshTokenCached); err != nil {
+		return nil, err
 	}
 
-	if refreshTokenUserId != accessTokenUserId {
-		return nil, errors.New("access_token sub does not match refresh_token sub")
+	accessTokenUuid, ok := refreshTokenCached["access_token_uuid"]
+	if !ok {
+		return nil, errors.New("access_token_uuid not found in cached refresh_token")
 	}
 
 	// safe to delete both access and refresh tokens from cache, though access token is probably already deleted
 
 	// delete refresh token uuid
-	if err = svc.cache.Delete(fmt.Sprint(refreshTokenUuid), fmt.Sprint(accessTokenUuid)); err != nil {
+	if err = svc.cache.Delete(refreshTokenUuid.(string), accessTokenUuid.(string)); err != nil {
 		return nil, err
 	}
 
@@ -265,16 +266,37 @@ func (svc *service) createAuth(claims tokenClaims) (tokensMap, error) {
 		return nil, err
 	}
 
-	userId := claims["sub"]
+	// we do this so we can later easily find connection between access and refresh tokens
+	// it's needed for easier cleanup on logout and refresh/token
+
+	accessTokenContent := map[string]interface{}{
+		"sub":                claims["sub"],
+		"refresh_token_uuid": td.refreshTokenUuid,
+	}
+
+	accessTokenBytes, err := json.Marshal(accessTokenContent)
+	if err != nil {
+		return nil, err
+	}
+
+	refreshTokenContent := map[string]interface{}{
+		"sub":               claims["sub"],
+		"access_token_uuid": td.accessTokenUuid,
+	}
+
+	refreshTokenBytes, err := json.Marshal(refreshTokenContent)
+	if err != nil {
+		return nil, err
+	}
 
 	if err = svc.cache.Store(
 		&cache.Item{
 			Key:        td.accessTokenUuid,
-			Value:      userId,
+			Value:      string(accessTokenBytes),
 			Expiration: td.accessTokenExpiry,
 		}, &cache.Item{
 			Key:        td.refreshTokenUuid,
-			Value:      userId,
+			Value:      string(refreshTokenBytes),
 			Expiration: td.refreshTokenExpiry,
 		}); err != nil {
 		return nil, err

@@ -22,6 +22,5 @@ INSERT INTO casbin_rule(ptype, v0, v1) VALUES('g', '1', 'admin');
 * [ ] Email confirmation after account registration
 * [ ] Logout per instance (access_token/refresh_token pair) + logout from all instances
 * [ ] Make *auth.User pluggable
-* [ ] Make refresh token api more elegant, simple (deleting old access and refresh tokens functionality)
 * [ ] Improve logging
 * [ ] Get rid of gin dependency

@@ -1,6 +1,7 @@
 package hamr
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/casbin/casbin/v2"
 	gormadapter "github.com/casbin/gorm-adapter/v3"
@@ -27,29 +28,40 @@ func (svc *service) authorize(obj, act string, adapter *gormadapter.Adapter) gin
 			return
 		}
 
-		userId := claims["sub"]
+		userIdFromRequestClaims := claims["sub"]
 		accessTokenUuid := claims["uuid"]
-		if userId == nil || accessTokenUuid == nil {
+		if userIdFromRequestClaims == nil || accessTokenUuid == nil {
 			ctx.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
 
-		bUserId, err := svc.cache.Get(fmt.Sprint(accessTokenUuid))
+		accessTokenBytes, err := svc.cache.Get(accessTokenUuid.(string))
 		if err != nil {
 			ctx.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
 
-		if fmt.Sprint(userId) != string(bUserId) {
+		var accessTokenCached map[string]interface{}
+		if err = json.Unmarshal(accessTokenBytes, &accessTokenCached); err != nil {
+			ctx.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+		userIdFromCacheClaims, ok := accessTokenCached["sub"]
+		if !ok {
+			ctx.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+
+		if userIdFromRequestClaims.(float64) != userIdFromCacheClaims.(float64) {
 			ctx.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
 
 		if adapter != nil {
-			id := strconv.Itoa(int(userId.(float64)))
+			id := strconv.Itoa(int(userIdFromRequestClaims.(float64)))
 
 			// enforce Casbin policy
-			if ok, policyErr := enforce(id, obj, act, adapter); policyErr != nil || !ok {
+			if policyOk, policyErr := enforce(id, obj, act, adapter); policyErr != nil || !policyOk {
 				ctx.AbortWithStatus(http.StatusUnauthorized)
 				return
 			}

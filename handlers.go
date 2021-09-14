@@ -5,7 +5,6 @@ import (
 	"github.com/gobackpack/hamr/external"
 	"github.com/sirupsen/logrus"
 	"net/http"
-	"strings"
 )
 
 // registerRequest http API model
@@ -66,21 +65,7 @@ func (auth *auth) loginHandler(ctx *gin.Context) {
 func (auth *auth) logoutHandler(ctx *gin.Context) {
 	_, accessToken := getAccessTokenFromRequest(ctx)
 
-	logoutRequest := map[string]string{}
-	if err := ctx.ShouldBindJSON(&logoutRequest); err != nil {
-		logrus.Error("logout failed, invalid data: ", err)
-		ctx.JSON(http.StatusUnprocessableEntity, "logout failed, invalid data")
-		return
-	}
-
-	refreshToken, ok := logoutRequest["refresh_token"]
-	if !ok || strings.TrimSpace(refreshToken) == "" {
-		logrus.Error("logout failed, missing refresh_token")
-		ctx.JSON(http.StatusBadRequest, "logout failed, missing refresh_token")
-		return
-	}
-
-	if err := auth.service.destroyAuthenticationSession(accessToken, refreshToken); err != nil {
+	if err := auth.service.destroyAuthenticationSession(accessToken); err != nil {
 		logrus.Error("logout failed, internal error: ", err)
 		ctx.JSON(http.StatusBadRequest, "logout failed, internal error")
 		return
@@ -95,10 +80,14 @@ func (auth *auth) refreshTokenHandler(ctx *gin.Context) {
 		ctx.JSON(http.StatusUnprocessableEntity, "refresh token failed, invalid data")
 		return
 	}
-	accessToken := refreshTokenRequest["access_token"]
-	refreshToken := refreshTokenRequest["refresh_token"]
+	refreshToken, ok := refreshTokenRequest["refresh_token"]
+	if !ok {
+		logrus.Error("refresh token failed, invalid data: missing refresh_token field")
+		ctx.JSON(http.StatusUnprocessableEntity, "refresh token failed, invalid data")
+		return
+	}
 
-	tokens, err := auth.service.refreshToken(accessToken, refreshToken)
+	tokens, err := auth.service.refreshToken(refreshToken)
 	if err != nil {
 		logrus.Error("refresh token failed, internal error: ", err)
 		ctx.JSON(http.StatusBadRequest, "refresh token failed, internal error")
