@@ -85,5 +85,17 @@ func main() {
 		ctx.JSON(http.StatusOK, "policy protected")
 	})
 
+	// example #3: public
+	router.GET("users", func(ctx *gin.Context) {
+		var users []*User
+
+		if result := db.Find(&users); result.Error != nil {
+			ctx.JSON(http.StatusBadRequest, "failed to fetch users")
+			return
+		}
+
+		ctx.JSON(http.StatusOK, users)
+	})
+
 	hamr.ServeHttp(":8080", router)
 }
