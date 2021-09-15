@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/gobackpack/hamr/internal/cache"
 	"github.com/gobackpack/hamr/internal/env"
-	"github.com/sirupsen/logrus"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -25,17 +24,13 @@ type token struct {
 func Initialize(fallbackDbName string) (*Storage, error) {
 	connString := env.Get("db_conn_string", fallbackDbName)
 	if strings.TrimSpace(connString) == "" {
-		logrus.Error("missing connection string [env|config.yml]")
-		logrus.Warn("CAUTION! service will be running without database connection!")
-		return nil, errors.New("invalid connection string")
+		return nil, errors.New("missing connection string")
 	}
 
 	db, err := gorm.Open(sqlite.Open(connString), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
 	})
 	if err != nil {
-		logrus.Error("failed to connect database: ", err)
-		logrus.Warn("CAUTION! service will be running without database connection!")
 		return nil, err
 	}
 
