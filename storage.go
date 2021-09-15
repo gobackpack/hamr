@@ -4,6 +4,7 @@ import (
 	"github.com/gobackpack/hamr/internal/cache"
 	"github.com/gobackpack/hamr/internal/cache/c2go"
 	"github.com/gobackpack/hamr/internal/cache/redis"
+	"github.com/gobackpack/hamr/internal/cache/sqlite"
 	"github.com/gobackpack/hamr/internal/env"
 	"github.com/sirupsen/logrus"
 	"gorm.io/driver/mysql"
@@ -91,4 +92,13 @@ func NewRedisCacheStorage(host, port, password string, cacheDb int) cache.Storag
 
 func NewC2GoCacheStorage(cacheDb string) cache.Storage {
 	return c2go.New(cacheDb)
+}
+
+func NewSqliteCacheStorage(cacheDb string) cache.Storage {
+	storage, err := sqlite.Initialize(cacheDb)
+	if err != nil {
+		logrus.Fatal(err)
+	}
+
+	return storage
 }
