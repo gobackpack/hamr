@@ -9,6 +9,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 	"strings"
+	"time"
 )
 
 type Storage struct {
@@ -16,9 +17,10 @@ type Storage struct {
 }
 
 type token struct {
-	Id    uint `gorm:"primarykey"`
-	Key   string
-	Value string
+	Id         uint `gorm:"primarykey"`
+	Key        string
+	Value      string
+	Expiration time.Time
 }
 
 func Initialize(fallbackDbName string) (*Storage, error) {
@@ -53,8 +55,9 @@ func (storage *Storage) Store(items ...*cache.Item) error {
 		}
 
 		tokensData = append(tokensData, &token{
-			Key:   i.Key,
-			Value: string(data),
+			Key:        i.Key,
+			Value:      string(data),
+			Expiration: time.Now().Add(i.Expiration),
 		})
 	}
 
@@ -74,6 +77,10 @@ func (storage *Storage) Get(key string) ([]byte, error) {
 
 	if tokensData.Id == 0 {
 		return nil, errors.New("key does not exist")
+	}
+
+	if tokensData.Expiration.Before(time.Now().UTC()) {
+		return nil, errors.New("token expired")
 	}
 
 	return []byte(tokensData.Value), nil
