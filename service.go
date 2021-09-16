@@ -7,7 +7,7 @@ import (
 	gormadapter "github.com/casbin/gorm-adapter/v3"
 	"github.com/gobackpack/crypto"
 	"github.com/gobackpack/hamr/internal/cache"
-	"github.com/gobackpack/hamr/oauth"
+	"github.com/gobackpack/hamr/oauth/models"
 	"github.com/gobackpack/jwt"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -120,7 +120,7 @@ func (svc *service) authenticate(email, password string) (authTokens, error) {
 }
 
 // authenticateWithOAuth will login user with oauth provider (google, github...), save tokens in cache
-func (svc *service) authenticateWithOAuth(userInfo *oauth.UserInfo, provider string) (authTokens, error) {
+func (svc *service) authenticateWithOAuth(userInfo *models.UserInfo, provider string) (authTokens, error) {
 	externalId := userInfo.ExternalId
 	email := userInfo.Email
 

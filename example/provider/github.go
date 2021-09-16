@@ -3,6 +3,7 @@ package provider
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/gobackpack/hamr/oauth/models"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/github"
@@ -29,7 +30,7 @@ func (*CustomGithubProvider) Endpoint() oauth2.Endpoint {
 	return github.Endpoint
 }
 
-func (*CustomGithubProvider) GetUserInfo(accessToken string) (map[string]string, error) {
+func (*CustomGithubProvider) GetUserInfo(accessToken string) (*models.UserInfo, error) {
 	exchangeUrl := "https://api.github.com/user"
 
 	req, err := http.NewRequest("GET", exchangeUrl, nil)
@@ -62,9 +63,8 @@ func (*CustomGithubProvider) GetUserInfo(accessToken string) (map[string]string,
 		return nil, err
 	}
 
-	oAuthClaims := make(map[string]string)
-	oAuthClaims["email"] = r.Email
-	oAuthClaims["externalId"] = fmt.Sprint(r.Id)
-
-	return oAuthClaims, nil
+	return &models.UserInfo{
+		ExternalId: fmt.Sprint(r.Id),
+		Email:      r.Email,
+	}, nil
 }

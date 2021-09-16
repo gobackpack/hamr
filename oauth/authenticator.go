@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"github.com/gin-gonic/gin"
+	"github.com/gobackpack/hamr/oauth/models"
 	"github.com/gobackpack/hamr/oauth/providers"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -38,13 +39,7 @@ type Authenticator struct {
 type Provider interface {
 	Scopes() []string
 	Endpoint() oauth2.Endpoint
-	GetUserInfo(string) (map[string]string, error)
-}
-
-// UserInfo from oauth provider
-type UserInfo struct {
-	ExternalId string
-	Email      string
+	GetUserInfo(string) (*models.UserInfo, error)
 }
 
 // NewAuthenticator will setup *Authenticator, oAuth2 configuration
@@ -88,25 +83,13 @@ func (authenticator Authenticator) RedirectToLoginUrl() {
 }
 
 // GetUserInfo from oauth provider
-func (authenticator Authenticator) GetUserInfo() (*UserInfo, error) {
+func (authenticator Authenticator) GetUserInfo() (*models.UserInfo, error) {
 	token, err := authenticator.exchangeCodeForToken()
 	if err != nil {
 		return nil, err
 	}
 
-	userData, err := authenticator.provider.GetUserInfo(token.AccessToken)
-	if err != nil {
-		return nil, err
-	}
-
-	if err = validateUserData(userData); err != nil {
-		return nil, err
-	}
-
-	return &UserInfo{
-		ExternalId: userData["externalId"],
-		Email:      userData["email"],
-	}, nil
+	return authenticator.provider.GetUserInfo(token.AccessToken)
 }
 
 // exchangeCodeForToken will validate state and exchange code for oauth token
@@ -147,19 +130,4 @@ func (authenticator Authenticator) setLoginAntiForgeryCookie() (string, error) {
 	http.SetCookie(authenticator.ctx.Writer, &cookie)
 
 	return state, nil
-}
-
-// validateUserData will check if user data from oauth provider contains all required fields
-func validateUserData(data map[string]string) error {
-	_, ok := data["externalId"]
-	if !ok {
-		return errors.New("missing externalId from data")
-	}
-
-	_, ok = data["email"]
-	if !ok {
-		return errors.New("missing email from data")
-	}
-
-	return nil
 }

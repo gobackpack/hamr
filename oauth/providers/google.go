@@ -3,6 +3,7 @@ package providers
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/gobackpack/hamr/oauth/models"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -26,7 +27,7 @@ func (*Google) Endpoint() oauth2.Endpoint {
 	return google.Endpoint
 }
 
-func (*Google) GetUserInfo(accessToken string) (map[string]string, error) {
+func (*Google) GetUserInfo(accessToken string) (*models.UserInfo, error) {
 	exchangeUrl := "https://www.googleapis.com/oauth2/v2/userinfo?access_token=" + accessToken
 
 	resp, err := http.Get(exchangeUrl)
@@ -51,9 +52,8 @@ func (*Google) GetUserInfo(accessToken string) (map[string]string, error) {
 		return nil, err
 	}
 
-	oAuthClaims := make(map[string]string)
-	oAuthClaims["email"] = r.Email
-	oAuthClaims["externalId"] = r.Id
-
-	return oAuthClaims, nil
+	return &models.UserInfo{
+		ExternalId: r.Id,
+		Email:      r.Email,
+	}, nil
 }
