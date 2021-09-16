@@ -11,7 +11,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"gorm.io/gorm"
-	"sync"
 	"time"
 )
 
@@ -35,7 +34,6 @@ type Config struct {
 	EnableLocalLogin bool
 
 	adapter *gormadapter.Adapter
-	locker  sync.Mutex
 }
 
 // New will initialize *auth api
@@ -97,9 +95,7 @@ func InitializeViper() {
 // RegisterProvider will append oauth.SupportedProviders with passed Provider.
 // Name must match settings in /config/app.yml
 func (auth *auth) RegisterProvider(name string, provider oauth.Provider) {
-	auth.config.locker.Lock()
 	oauth.SupportedProviders[name] = provider
-	auth.config.locker.Unlock()
 }
 
 // AuthorizeRequest is middleware to protect endpoints
