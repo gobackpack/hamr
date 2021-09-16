@@ -26,7 +26,7 @@ func (*Google) Endpoint() oauth2.Endpoint {
 	return google.Endpoint
 }
 
-func (*Google) GetUserData(accessToken string) (map[string]string, error) {
+func (*Google) GetUserInfo(accessToken string) (map[string]string, error) {
 	exchangeUrl := "https://www.googleapis.com/oauth2/v2/userinfo?access_token=" + accessToken
 
 	resp, err := http.Get(exchangeUrl)

@@ -29,7 +29,7 @@ func (*CustomGithubProvider) Endpoint() oauth2.Endpoint {
 	return github.Endpoint
 }
 
-func (*CustomGithubProvider) GetUserData(accessToken string) (map[string]string, error) {
+func (*CustomGithubProvider) GetUserInfo(accessToken string) (map[string]string, error) {
 	exchangeUrl := "https://api.github.com/user"
 
 	req, err := http.NewRequest("GET", exchangeUrl, nil)

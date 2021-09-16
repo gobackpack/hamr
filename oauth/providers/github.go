@@ -26,7 +26,7 @@ func (*Github) Endpoint() oauth2.Endpoint {
 	return github.Endpoint
 }
 
-func (*Github) GetUserData(accessToken string) (map[string]string, error) {
+func (*Github) GetUserInfo(accessToken string) (map[string]string, error) {
 	exchangeUrl := "https://api.github.com/user"
 
 	req, err := http.NewRequest("GET", exchangeUrl, nil)

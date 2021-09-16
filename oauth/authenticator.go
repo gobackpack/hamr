@@ -38,7 +38,7 @@ type Authenticator struct {
 type Provider interface {
 	Scopes() []string
 	Endpoint() oauth2.Endpoint
-	GetUserData(string) (map[string]string, error)
+	GetUserInfo(string) (map[string]string, error)
 }
 
 // Claims for oauth
@@ -94,7 +94,7 @@ func (authenticator Authenticator) GetOAuthClaims() (*Claims, error) {
 		return nil, err
 	}
 
-	userData, err := authenticator.provider.GetUserData(token.AccessToken)
+	userData, err := authenticator.provider.GetUserInfo(token.AccessToken)
 	if err != nil {
 		return nil, err
 	}
