@@ -135,14 +135,14 @@ func (auth *auth) oauthLoginCallbackHandler(ctx *gin.Context) {
 		return
 	}
 
-	claims, err := authenticator.GetOAuthClaims()
+	userInfo, err := authenticator.GetUserInfo()
 	if err != nil {
 		logrus.Error("oauth login callback failed, internal error: ", err)
 		ctx.JSON(http.StatusBadRequest, "oauth login callback failed, internal error")
 		return
 	}
 
-	tokens, err := auth.service.authenticateWithOAuth(claims, provider)
+	tokens, err := auth.service.authenticateWithOAuth(userInfo, provider)
 	if err != nil {
 		logrus.Error("oauth login callback failed, internal error: ", err)
 		ctx.JSON(http.StatusBadRequest, "oauth login callback failed, internal error")

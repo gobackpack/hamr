@@ -41,8 +41,8 @@ type Provider interface {
 	GetUserInfo(string) (map[string]string, error)
 }
 
-// Claims for oauth
-type Claims struct {
+// UserInfo from oauth provider
+type UserInfo struct {
 	ExternalId string
 	Email      string
 }
@@ -87,8 +87,8 @@ func (authenticator Authenticator) RedirectToLoginUrl() {
 	http.Redirect(authenticator.ctx.Writer, authenticator.ctx.Request, oAuthLoginUrl, http.StatusTemporaryRedirect)
 }
 
-// GetOAuthClaims will exchange code for token and get user data using exchanged token
-func (authenticator Authenticator) GetOAuthClaims() (*Claims, error) {
+// GetUserInfo from provider
+func (authenticator Authenticator) GetUserInfo() (*UserInfo, error) {
 	token, err := authenticator.exchangeCodeForToken()
 	if err != nil {
 		return nil, err
@@ -103,7 +103,7 @@ func (authenticator Authenticator) GetOAuthClaims() (*Claims, error) {
 		return nil, err
 	}
 
-	return &Claims{
+	return &UserInfo{
 		ExternalId: userData["externalId"],
 		Email:      userData["email"],
 	}, nil
