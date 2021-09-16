@@ -81,9 +81,7 @@ func (svc *service) authenticate(email, password string) (authTokens, error) {
 		return nil, errors.New("user email not registered: " + email)
 	}
 
-	claims := make(tokenClaims)
-	claims["sub"] = user.Id
-	claims["email"] = user.Email
+	claims := generateAuthClaims(user.Id, user.Email)
 
 	// user previously registered using local register (email + pwd), password already exists
 	// just validate credentials
@@ -154,9 +152,7 @@ func (svc *service) authenticateWithOAuth(oauthClaims *oauth.Claims, provider st
 		}
 	}
 
-	claims := make(tokenClaims)
-	claims["sub"] = user.Id
-	claims["email"] = user.Email
+	claims := generateAuthClaims(user.Id, user.Email)
 
 	tokens, err := svc.createAuth(claims)
 	if err != nil {
@@ -243,9 +239,7 @@ func (svc *service) refreshToken(refreshToken string) (authTokens, error) {
 	}
 
 	// generate new access token and refresh token
-	claims := make(tokenClaims)
-	claims["sub"] = refreshTokenUserId
-	claims["email"] = refreshTokenUserEmail
+	claims := generateAuthClaims(refreshTokenUserId.(uint), refreshTokenUserEmail.(string))
 
 	tokens, err := svc.createAuth(claims)
 	if err != nil {
@@ -388,4 +382,13 @@ func validateClaims(claims tokenClaims) error {
 	}
 
 	return nil
+}
+
+// generateAuthClaims for access token
+func generateAuthClaims(sub uint, email string) tokenClaims {
+	claims := make(tokenClaims)
+	claims["sub"] = sub
+	claims["email"] = email
+
+	return claims
 }
