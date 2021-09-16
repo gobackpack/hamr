@@ -43,8 +43,8 @@ type Provider interface {
 
 // Claims for oauth
 type Claims struct {
-	Id    string `json:"id"`
-	Email string `json:"email"`
+	ExternalId string
+	Email      string
 }
 
 // NewAuthenticator will setup *Authenticator, oAuth2 configuration
@@ -104,8 +104,8 @@ func (authenticator Authenticator) GetOAuthClaims() (*Claims, error) {
 	}
 
 	return &Claims{
-		Id:    userData["externalId"],
-		Email: userData["email"],
+		ExternalId: userData["externalId"],
+		Email:      userData["email"],
 	}, nil
 }
 

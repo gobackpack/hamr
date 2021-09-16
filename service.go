@@ -121,8 +121,8 @@ func (svc *service) authenticate(email, password string) (authTokens, error) {
 
 // authenticateWithOAuth will login user with oauth provider (google, github...), save tokens in cache
 func (svc *service) authenticateWithOAuth(oauthClaims *oauth.Claims, provider string) (authTokens, error) {
+	externalId := oauthClaims.ExternalId
 	email := oauthClaims.Email
-	externalId := oauthClaims.Id
 
 	user := svc.getUserByEmail(email)
 	if user == nil {
