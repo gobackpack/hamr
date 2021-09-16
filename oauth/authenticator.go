@@ -1,4 +1,4 @@
-package external
+package oauth
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"github.com/gin-gonic/gin"
-	"github.com/gobackpack/hamr/external/providers"
+	"github.com/gobackpack/hamr/oauth/providers"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"golang.org/x/oauth2"
@@ -16,16 +16,16 @@ import (
 )
 
 const (
-	externalLoginAntiForgeryKey = "externalLoginAntiForgery"
+	oAuthLoginAntiForgeryKey = "externalLoginAntiForgery"
 )
 
-// SupportedProviders are registered oAuth2 providers for external *Authenticator
+// SupportedProviders are registered oauth providers for *Authenticator
 var SupportedProviders = map[string]Provider{
 	"google": &providers.Google{},
 	"github": &providers.Github{},
 }
 
-// Authenticator is responsible for external logins, oAuth2 configuration setup
+// Authenticator is responsible for oauth logins, oAuth2 configuration setup
 type Authenticator struct {
 	provider Provider
 	scheme   string
@@ -34,15 +34,15 @@ type Authenticator struct {
 	config   *oauth2.Config
 }
 
-// Provider specific requirements for external *Authenticator
+// Provider specific requirements for *Authenticator
 type Provider interface {
 	Scopes() []string
 	Endpoint() oauth2.Endpoint
 	GetUserData(string) (map[string]string, error)
 }
 
-// OAuthClaims are used to pass required claims for external login flow
-type OAuthClaims struct {
+// Claims for oauth
+type Claims struct {
 	Id    string `json:"id"`
 	Email string `json:"email"`
 }
@@ -74,7 +74,7 @@ func NewAuthenticator(provider, scheme, host, port, routeGroup string, ctx *gin.
 	return authenticator, nil
 }
 
-// RedirectToLoginUrl will redirect to external provider login url
+// RedirectToLoginUrl will redirect to oauth provider login url
 func (authenticator Authenticator) RedirectToLoginUrl() {
 	oAuthState, err := authenticator.setLoginAntiForgeryCookie()
 	if err != nil {
@@ -87,9 +87,31 @@ func (authenticator Authenticator) RedirectToLoginUrl() {
 	http.Redirect(authenticator.ctx.Writer, authenticator.ctx.Request, oAuthLoginUrl, http.StatusTemporaryRedirect)
 }
 
-// GetExternalProviderClaims will exchange code for token and get user data using exchanged token
-func (authenticator Authenticator) GetExternalProviderClaims() (*OAuthClaims, error) {
-	oAuthStateSaved, oAuthStateErr := authenticator.ctx.Request.Cookie(externalLoginAntiForgeryKey)
+// GetOAuthClaims will exchange code for token and get user data using exchanged token
+func (authenticator Authenticator) GetOAuthClaims() (*Claims, error) {
+	token, err := authenticator.exchangeCodeForToken()
+	if err != nil {
+		return nil, err
+	}
+
+	userData, err := authenticator.provider.GetUserData(token.AccessToken)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = validateUserData(userData); err != nil {
+		return nil, err
+	}
+
+	return &Claims{
+		Id:    userData["externalId"],
+		Email: userData["email"],
+	}, nil
+}
+
+// exchangeCodeForToken will validate state and exchange code for oauth token
+func (authenticator *Authenticator) exchangeCodeForToken() (*oauth2.Token, error) {
+	oAuthStateSaved, oAuthStateErr := authenticator.ctx.Request.Cookie(oAuthLoginAntiForgeryKey)
 	oAuthState := authenticator.ctx.Request.FormValue("state")
 	oAuthStateCode := authenticator.ctx.Request.FormValue("code")
 
@@ -106,19 +128,7 @@ func (authenticator Authenticator) GetExternalProviderClaims() (*OAuthClaims, er
 		return nil, err
 	}
 
-	userData, err := authenticator.provider.GetUserData(token.AccessToken)
-	if err != nil {
-		return nil, err
-	}
-
-	if err = validateUserData(userData); err != nil {
-		return nil, err
-	}
-
-	return &OAuthClaims{
-		Id:    userData["externalId"],
-		Email: userData["email"],
-	}, nil
+	return token, nil
 }
 
 // setLoginAntiForgeryCookie will generate random state string and save it in cookies.
@@ -133,13 +143,13 @@ func (authenticator Authenticator) setLoginAntiForgeryCookie() (string, error) {
 	state := base64.URLEncoding.EncodeToString(b)
 	var expiration = time.Now().Add(time.Minute * time.Duration(viper.GetInt("auth.state_expiry")))
 
-	cookie := http.Cookie{Name: externalLoginAntiForgeryKey, Value: state, Expires: expiration}
+	cookie := http.Cookie{Name: oAuthLoginAntiForgeryKey, Value: state, Expires: expiration}
 	http.SetCookie(authenticator.ctx.Writer, &cookie)
 
 	return state, nil
 }
 
-// validateUserData will check if user data from external provider contains all required fields
+// validateUserData will check if user data from oauth provider contains all required fields
 func validateUserData(data map[string]string) error {
 	_, ok := data["externalId"]
 	if !ok {

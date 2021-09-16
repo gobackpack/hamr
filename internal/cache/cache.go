@@ -4,7 +4,7 @@ import "time"
 
 type Item struct {
 	Key        string
-	Value interface{}
+	Value      interface{}
 	Expiration time.Duration
 }
 

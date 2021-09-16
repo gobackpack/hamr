@@ -6,8 +6,8 @@ import (
 	"fmt"
 	gormadapter "github.com/casbin/gorm-adapter/v3"
 	"github.com/gobackpack/crypto"
-	"github.com/gobackpack/hamr/external"
 	"github.com/gobackpack/hamr/internal/cache"
+	"github.com/gobackpack/hamr/oauth"
 	"github.com/gobackpack/jwt"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -95,7 +95,7 @@ func (svc *service) authenticate(email, password string) (authTokens, error) {
 
 		return tokens, nil
 	} else if user.Password == "" && user.ExternalId != "" {
-		// user previously registered with external provider (etc. google)
+		// user previously registered with oauth provider (etc. google)
 		// password does not exist, create new
 		argon := crypto.NewArgon2()
 		argon.Plain = password
@@ -121,10 +121,10 @@ func (svc *service) authenticate(email, password string) (authTokens, error) {
 	return nil, errors.New("invalid credentials")
 }
 
-// authenticateExternal will login user using external providers (google...), save tokens in cache
-func (svc *service) authenticateExternal(externalClaims *external.OAuthClaims, provider string) (authTokens, error) {
-	email := externalClaims.Email
-	externalId := externalClaims.Id
+// authenticateWithOAuth will login user with oauth provider (google, github...), save tokens in cache
+func (svc *service) authenticateWithOAuth(oauthClaims *oauth.Claims, provider string) (authTokens, error) {
+	email := oauthClaims.Email
+	externalId := oauthClaims.Id
 
 	user := svc.getUserByEmail(email)
 	if user == nil {

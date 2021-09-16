@@ -10,7 +10,7 @@ import (
 	"net/http"
 )
 
-// Google external *Authenticator provider implementation
+// Google oauth provider implementation
 type Google struct{}
 
 type googleResponse struct {

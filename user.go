@@ -21,7 +21,7 @@ type User struct {
 }
 
 // getUserByEmail will get *User by email from database.
-// This user is used in authentication process (login: local + external) and in validation during registration process
+// This user is used in authentication process (login: local + oauth) and in validation during registration process
 func (svc *service) getUserByEmail(email string) *User {
 	var usrEntity *User
 
@@ -36,7 +36,7 @@ func (svc *service) getUserByEmail(email string) *User {
 	return usrEntity
 }
 
-// addUser will create new *User in database. During registration process or first time external login (auto-register)
+// addUser will create new *User in database. During registration process or first time using oauth login (auto-register)
 func (svc *service) addUser(user *User) error {
 	tx := svc.db.Begin()
 	defer func() {

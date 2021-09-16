@@ -5,9 +5,9 @@ import (
 	gormadapter "github.com/casbin/gorm-adapter/v3"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/gobackpack/hamr/external"
 	"github.com/gobackpack/hamr/internal/cache"
 	"github.com/gobackpack/hamr/internal/httpserver"
+	"github.com/gobackpack/hamr/oauth"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"gorm.io/gorm"
@@ -94,11 +94,11 @@ func InitializeViper() {
 	}
 }
 
-// RegisterProvider will append external.SupportedProviders with passed Provider.
+// RegisterProvider will append oauth.SupportedProviders with passed Provider.
 // Name must match settings in /config/app.yml
-func (auth *auth) RegisterProvider(name string, provider external.Provider) {
+func (auth *auth) RegisterProvider(name string, provider oauth.Provider) {
 	auth.config.locker.Lock()
-	external.SupportedProviders[name] = provider
+	oauth.SupportedProviders[name] = provider
 	auth.config.locker.Unlock()
 }
 
@@ -129,8 +129,8 @@ func (auth *auth) initializeRoutes() {
 	r.POST("logout", auth.AuthorizeRequest("", "", nil), auth.logoutHandler)
 	r.POST("token/refresh", auth.refreshTokenHandler)
 
-	r.GET(":provider/login", auth.externalLoginHandler)
-	r.GET(":provider/callback", auth.externalLoginCallbackHandler)
+	r.GET(":provider/login", auth.oauthLoginHandler)
+	r.GET(":provider/callback", auth.oauthLoginCallbackHandler)
 }
 
 // runMigrations will automatically run migrations from /migrations/

@@ -3,7 +3,7 @@ package hamr
 import (
 	"errors"
 	"github.com/gin-gonic/gin"
-	"github.com/gobackpack/hamr/external"
+	"github.com/gobackpack/hamr/oauth"
 	"github.com/sirupsen/logrus"
 	"net/http"
 )
@@ -98,11 +98,11 @@ func (auth *auth) refreshTokenHandler(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, tokens)
 }
 
-// externalLoginHandler maps to :provider login route. Redirects to :provider oAuth login url
-func (auth *auth) externalLoginHandler(ctx *gin.Context) {
+// oauthLoginHandler maps to :provider login route. Redirects to :provider oAuth login url
+func (auth *auth) oauthLoginHandler(ctx *gin.Context) {
 	provider := ctx.Param("provider")
 
-	authenticator, err := external.NewAuthenticator(
+	authenticator, err := oauth.NewAuthenticator(
 		provider,
 		auth.config.Scheme,
 		auth.config.Host,
@@ -110,19 +110,19 @@ func (auth *auth) externalLoginHandler(ctx *gin.Context) {
 		auth.config.RouteGroup,
 		ctx)
 	if err != nil {
-		logrus.Error("external login redirect failed, internal error: ", err)
-		ctx.JSON(http.StatusBadRequest, "external login redirect failed, internal error")
+		logrus.Error("oauth login redirect failed, internal error: ", err)
+		ctx.JSON(http.StatusBadRequest, "oauth login redirect failed, internal error")
 		return
 	}
 
 	authenticator.RedirectToLoginUrl()
 }
 
-// externalLoginCallbackHandler maps to :provider login callback route. After login :provider redirects to this route
-func (auth *auth) externalLoginCallbackHandler(ctx *gin.Context) {
+// oauthLoginCallbackHandler maps to :provider login callback route. After login :provider redirects to this route
+func (auth *auth) oauthLoginCallbackHandler(ctx *gin.Context) {
 	provider := ctx.Param("provider")
 
-	authenticator, err := external.NewAuthenticator(
+	authenticator, err := oauth.NewAuthenticator(
 		provider,
 		auth.config.Scheme,
 		auth.config.Host,
@@ -130,22 +130,22 @@ func (auth *auth) externalLoginCallbackHandler(ctx *gin.Context) {
 		auth.config.RouteGroup,
 		ctx)
 	if err != nil {
-		logrus.Error("external login callback failed, internal error: ", err)
-		ctx.JSON(http.StatusBadRequest, "external login callback failed, internal error")
+		logrus.Error("oauth login callback failed, internal error: ", err)
+		ctx.JSON(http.StatusBadRequest, "oauth login callback failed, internal error")
 		return
 	}
 
-	claims, err := authenticator.GetExternalProviderClaims()
+	claims, err := authenticator.GetOAuthClaims()
 	if err != nil {
-		logrus.Error("external login callback failed, internal error: ", err)
-		ctx.JSON(http.StatusBadRequest, "external login callback failed, internal error")
+		logrus.Error("oauth login callback failed, internal error: ", err)
+		ctx.JSON(http.StatusBadRequest, "oauth login callback failed, internal error")
 		return
 	}
 
-	tokens, err := auth.service.authenticateExternal(claims, provider)
+	tokens, err := auth.service.authenticateWithOAuth(claims, provider)
 	if err != nil {
-		logrus.Error("external login callback failed, internal error: ", err)
-		ctx.JSON(http.StatusBadRequest, "external login callback failed, internal error")
+		logrus.Error("oauth login callback failed, internal error: ", err)
+		ctx.JSON(http.StatusBadRequest, "oauth login callback failed, internal error")
 		return
 	}
 

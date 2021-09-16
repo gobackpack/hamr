@@ -10,7 +10,7 @@ import (
 	"net/http"
 )
 
-// Github external *Authenticator provider implementation
+// Github oauth provider implementation
 type Github struct{}
 
 type githubResponse struct {
