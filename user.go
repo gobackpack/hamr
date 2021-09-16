@@ -66,21 +66,5 @@ func (svc *service) addUser(user *User) error {
 
 // editUser will update *User. Used in authentication process (updating login provider and password)
 func (svc *service) editUser(user *User) error {
-	tx := svc.db.Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-
-	if err := tx.Error; err != nil {
-		return err
-	}
-
-	if result := tx.Save(user); result.Error != nil {
-		tx.Rollback()
-		return result.Error
-	}
-
-	return tx.Commit().Error
+	return svc.db.Save(user).Error
 }
