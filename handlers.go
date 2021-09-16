@@ -10,8 +10,8 @@ import (
 
 // loginRequest http API model
 type loginRequest struct {
-	email    string
-	password string
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 // registerHandler maps to register route
@@ -52,7 +52,7 @@ func (auth *auth) loginHandler(ctx *gin.Context) {
 		return
 	}
 
-	tokens, err := auth.service.authenticate(req.email, req.password)
+	tokens, err := auth.service.authenticate(req.Email, req.Password)
 	if err != nil {
 		logrus.Error("login failed, internal error: ", err)
 		ctx.JSON(http.StatusBadRequest, "login failed, internal error")

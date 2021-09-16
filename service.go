@@ -86,6 +86,12 @@ func (svc *service) authenticate(email, password string) (authTokens, error) {
 	// user previously registered using local register (email + pwd), password already exists
 	// just validate credentials
 	if user.Password != "" && validateCredentials(user, password) {
+		user.LastLogin = time.Now().UTC()
+
+		if err := svc.editUser(user); err != nil {
+			return nil, err
+		}
+
 		tokens, err := svc.createAuth(claims)
 		if err != nil {
 			return nil, err
@@ -103,6 +109,7 @@ func (svc *service) authenticate(email, password string) (authTokens, error) {
 		}
 
 		user.Password = argon.Hashed
+		user.LastLogin = time.Now().UTC()
 
 		if err := svc.editUser(user); err != nil {
 			return nil, err
@@ -132,6 +139,7 @@ func (svc *service) authenticateWithOAuth(userInfo *models.UserInfo, provider st
 			ExternalId:       externalId,
 			ExternalProvider: provider,
 			Confirmed:        true,
+			LastLogin:        time.Now().UTC(),
 		}
 
 		if err := svc.addUser(user); err != nil {
@@ -146,6 +154,7 @@ func (svc *service) authenticateWithOAuth(userInfo *models.UserInfo, provider st
 	} else {
 		user.ExternalId = externalId
 		user.ExternalProvider = provider
+		user.LastLogin = time.Now().UTC()
 
 		if err := svc.editUser(user); err != nil {
 			return nil, err

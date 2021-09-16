@@ -15,6 +15,7 @@ type User struct {
 	ExternalId       string
 	ExternalProvider string
 	Confirmed        bool
+	LastLogin        time.Time
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
 	DeletedAt        gorm.DeletedAt `gorm:"index"`
