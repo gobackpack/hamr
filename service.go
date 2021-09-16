@@ -42,8 +42,8 @@ type tokenDetails struct {
 // These claims will be generated in access and refresh tokens
 type tokenClaims map[string]interface{}
 
-// tokensMap contains pair of access_token and refresh_token after authentication. These token pairs are returned to the user
-type tokensMap map[string]string
+// authTokens contains pair of access_token and refresh_token after authentication. These token pairs are returned to the user
+type authTokens map[string]string
 
 // registerUser will save user into database
 func (svc *service) registerUser(user *User, requestData map[string]interface{}) (*User, error) {
@@ -75,7 +75,7 @@ func (svc *service) registerUser(user *User, requestData map[string]interface{})
 }
 
 // authenticate will use local login (email + pwd) to login user. Validate credentials and save tokens in cache
-func (svc *service) authenticate(email, password string) (tokensMap, error) {
+func (svc *service) authenticate(email, password string) (authTokens, error) {
 	user := svc.getUserByEmail(email)
 	if user == nil {
 		return nil, errors.New("user email not registered: " + email)
@@ -122,7 +122,7 @@ func (svc *service) authenticate(email, password string) (tokensMap, error) {
 }
 
 // authenticateExternal will login user using external providers (google...), save tokens in cache
-func (svc *service) authenticateExternal(externalClaims *external.OAuthClaims, provider string) (tokensMap, error) {
+func (svc *service) authenticateExternal(externalClaims *external.OAuthClaims, provider string) (authTokens, error) {
 	email := externalClaims.Email
 	externalId := externalClaims.Id
 
@@ -202,7 +202,7 @@ func (svc *service) destroyAuthenticationSession(accessToken string) error {
 }
 
 // refreshToken will generate new pair of access and refresh tokens. Remove old access and refresh tokens from cache
-func (svc *service) refreshToken(refreshToken string) (tokensMap, error) {
+func (svc *service) refreshToken(refreshToken string) (authTokens, error) {
 	// get old refresh token uuid so it can be deleted from cache
 	refreshTokenClaims, valid := svc.extractRefreshTokenClaims(refreshToken)
 	if !valid {
@@ -256,7 +256,7 @@ func (svc *service) refreshToken(refreshToken string) (tokensMap, error) {
 }
 
 // createAuth will create *User login session. Generate access and refresh tokens and save both tokens in cache storage
-func (svc *service) createAuth(claims tokenClaims) (tokensMap, error) {
+func (svc *service) createAuth(claims tokenClaims) (authTokens, error) {
 	if err := validateClaims(claims); err != nil {
 		return nil, err
 	}
@@ -292,7 +292,7 @@ func (svc *service) createAuth(claims tokenClaims) (tokensMap, error) {
 		return nil, err
 	}
 
-	tokens := make(tokensMap)
+	tokens := make(authTokens)
 	tokens["access_token"] = td.accessToken
 	tokens["refresh_token"] = td.refreshToken
 
