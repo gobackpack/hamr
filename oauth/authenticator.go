@@ -87,7 +87,7 @@ func (authenticator Authenticator) RedirectToLoginUrl() {
 	http.Redirect(authenticator.ctx.Writer, authenticator.ctx.Request, oAuthLoginUrl, http.StatusTemporaryRedirect)
 }
 
-// GetUserInfo from provider
+// GetUserInfo from oauth provider
 func (authenticator Authenticator) GetUserInfo() (*UserInfo, error) {
 	token, err := authenticator.exchangeCodeForToken()
 	if err != nil {
