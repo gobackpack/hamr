@@ -426,10 +426,3 @@ func generateAuthClaims(sub uint, email string) tokenClaims {
 
 	return claims
 }
-
-// setAccountConfirmed will set Confirmed to true and reset other confirmation fields to zero values
-func setAccountConfirmed(user *User) {
-	user.Confirmed = true
-	user.ConfirmationToken = ""
-	user.ConfirmationTokenExpiry = nil
-}

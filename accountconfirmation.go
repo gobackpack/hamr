@@ -106,3 +106,10 @@ func (svc *service) getUserByConfirmationToken(token string) *User {
 
 	return usrEntity
 }
+
+// setAccountConfirmed will set Confirmed to true and reset other confirmation fields to zero values
+func setAccountConfirmed(user *User) {
+	user.Confirmed = true
+	user.ConfirmationToken = ""
+	user.ConfirmationTokenExpiry = nil
+}
