@@ -86,6 +86,10 @@ func (svc *service) confirmAccount(token string) error {
 		return errors.New("user account is already confirmed")
 	}
 
+	if user.ConfirmationTokenExpiry.Before(time.Now().UTC()) {
+		return errors.New("confirmation token expired")
+	}
+
 	setAccountConfirmed(user)
 
 	return svc.editUser(user)
