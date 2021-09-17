@@ -10,6 +10,7 @@ import (
 	"github.com/gobackpack/hamr/oauth/models"
 	"github.com/gobackpack/jwt"
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 	"time"
 )
@@ -21,9 +22,10 @@ type service struct {
 	refreshTokenSecret []byte
 	refreshTokenExpiry time.Duration
 
-	cache         cache.Storage
-	casbinAdapter *gormadapter.Adapter
-	db            *gorm.DB
+	cache               cache.Storage
+	casbinAdapter       *gormadapter.Adapter
+	db                  *gorm.DB
+	accountConfirmation *accountConfirmation
 
 	PostRegisterCallback func(user *User, requestData map[string]interface{}) error
 }
@@ -71,6 +73,22 @@ func (svc *service) registerUser(user *User, requestData map[string]interface{})
 		}
 	}
 
+	if svc.accountConfirmation != nil {
+		go func(user *User) {
+			token := uuid.New().String()
+			if err := svc.accountConfirmation.sendConfirmationEmail(user.Email, token); err != nil {
+				logrus.Error(err)
+			}
+
+			user.ConfirmationToken = token
+			user.ConfirmationTokenExpiry = &svc.accountConfirmation.tokenExpiry
+
+			if err := svc.editUser(user); err != nil {
+				logrus.Error(err)
+			}
+		}(user)
+	}
+
 	return user, nil
 }
 
@@ -79,6 +97,10 @@ func (svc *service) authenticate(email, password string) (authTokens, error) {
 	user := svc.getUserByEmail(email)
 	if user == nil {
 		return nil, errors.New("user email not registered: " + email)
+	}
+
+	if svc.accountConfirmation != nil && !user.Confirmed {
+		return nil, errors.New("user account not confirmed")
 	}
 
 	claims := generateAuthClaims(user.Id, user.Email)
@@ -138,9 +160,10 @@ func (svc *service) authenticateWithOAuth(userInfo *models.UserInfo, provider st
 			Username:         email,
 			ExternalId:       externalId,
 			ExternalProvider: provider,
-			Confirmed:        true,
 			LastLogin:        time.Now().UTC(),
 		}
+
+		setAccountConfirmed(user)
 
 		if err := svc.addUser(user); err != nil {
 			return nil, err
@@ -155,6 +178,8 @@ func (svc *service) authenticateWithOAuth(userInfo *models.UserInfo, provider st
 		user.ExternalId = externalId
 		user.ExternalProvider = provider
 		user.LastLogin = time.Now().UTC()
+
+		setAccountConfirmed(user)
 
 		if err := svc.editUser(user); err != nil {
 			return nil, err
@@ -400,4 +425,11 @@ func generateAuthClaims(sub uint, email string) tokenClaims {
 	claims["email"] = email
 
 	return claims
+}
+
+// setAccountConfirmed will set Confirmed to true and reset other confirmation fields to zero values
+func setAccountConfirmed(user *User) {
+	user.Confirmed = true
+	user.ConfirmationToken = ""
+	user.ConfirmationTokenExpiry = nil
 }

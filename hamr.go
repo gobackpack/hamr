@@ -11,6 +11,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"gorm.io/gorm"
+	"strings"
 	"time"
 )
 
@@ -24,16 +25,19 @@ type auth struct {
 
 // Config for *auth api
 type Config struct {
-	Scheme           string
-	Host             string
-	Port             string
-	RouteGroup       string
-	Router           *gin.Engine
-	Db               *gorm.DB
-	CacheStorage     cache.Storage
-	EnableLocalLogin bool
+	Scheme              string
+	Host                string
+	Port                string
+	RouteGroup          string
+	Router              *gin.Engine
+	Db                  *gorm.DB
+	CacheStorage        cache.Storage
+	EnableLocalLogin    bool
+	AccountConfirmation *accountConfirmation
 
-	adapter *gormadapter.Adapter
+	adapter  *gormadapter.Adapter
+	basePath string
+	fullPath string
 }
 
 // New will initialize *auth api
@@ -44,17 +48,23 @@ func New(config *Config) *auth {
 	}
 
 	config.adapter = adapter
+	config.Host = strings.Trim(config.Host, "/")
+	config.RouteGroup = strings.Trim(config.RouteGroup, "/")
+	config.basePath = config.Scheme + "://" + config.Host + ":" + config.Port
+	config.fullPath = config.basePath + "/" + config.RouteGroup
+	config.AccountConfirmation.fullPath = config.fullPath
 
 	hamrAuth := &auth{
 		config: config,
 		service: &service{
-			accessTokenSecret:  []byte(viper.GetString("auth.access_token.secret")),
-			accessTokenExpiry:  time.Minute * time.Duration(viper.GetInt("auth.access_token.expiry")),
-			refreshTokenSecret: []byte(viper.GetString("auth.refresh_token.secret")),
-			refreshTokenExpiry: time.Minute * time.Duration(viper.GetInt("auth.refresh_token.expiry")),
-			db:                 config.Db,
-			cache:              config.CacheStorage,
-			casbinAdapter:      adapter,
+			accessTokenSecret:   []byte(viper.GetString("auth.access_token.secret")),
+			accessTokenExpiry:   time.Minute * time.Duration(viper.GetInt("auth.access_token.expiry")),
+			refreshTokenSecret:  []byte(viper.GetString("auth.refresh_token.secret")),
+			refreshTokenExpiry:  time.Minute * time.Duration(viper.GetInt("auth.refresh_token.expiry")),
+			db:                  config.Db,
+			cache:               config.CacheStorage,
+			casbinAdapter:       adapter,
+			accountConfirmation: config.AccountConfirmation,
 		},
 	}
 
@@ -117,16 +127,19 @@ func (auth *auth) Router() *gin.Engine {
 func (auth *auth) initializeRoutes() {
 	r := auth.config.Router.Group(auth.config.RouteGroup)
 
+	r.GET(":provider/login", auth.oauthLoginHandler)
+	r.GET(":provider/callback", auth.oauthLoginCallbackHandler)
+	r.POST("logout", auth.AuthorizeRequest("", "", nil), auth.logoutHandler)
+	r.POST("token/refresh", auth.refreshTokenHandler)
+
 	if auth.config.EnableLocalLogin {
 		r.POST("register", auth.registerHandler)
 		r.POST("login", auth.loginHandler)
 	}
 
-	r.POST("logout", auth.AuthorizeRequest("", "", nil), auth.logoutHandler)
-	r.POST("token/refresh", auth.refreshTokenHandler)
-
-	r.GET(":provider/login", auth.oauthLoginHandler)
-	r.GET(":provider/callback", auth.oauthLoginCallbackHandler)
+	if auth.accountConfirmation != nil {
+		r.GET("confirm", auth.confirmAccountHandler)
+	}
 }
 
 // runMigrations will automatically run migrations from /migrations/

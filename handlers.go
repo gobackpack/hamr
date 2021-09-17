@@ -102,13 +102,7 @@ func (auth *auth) refreshTokenHandler(ctx *gin.Context) {
 func (auth *auth) oauthLoginHandler(ctx *gin.Context) {
 	provider := ctx.Param("provider")
 
-	authenticator, err := oauth.NewAuthenticator(
-		provider,
-		auth.config.Scheme,
-		auth.config.Host,
-		auth.config.Port,
-		auth.config.RouteGroup,
-		ctx)
+	authenticator, err := oauth.NewAuthenticator(provider, auth.config.fullPath, ctx)
 	if err != nil {
 		logrus.Error("oauth login redirect failed, internal error: ", err)
 		ctx.JSON(http.StatusBadRequest, "oauth login redirect failed, internal error")
@@ -122,13 +116,7 @@ func (auth *auth) oauthLoginHandler(ctx *gin.Context) {
 func (auth *auth) oauthLoginCallbackHandler(ctx *gin.Context) {
 	provider := ctx.Param("provider")
 
-	authenticator, err := oauth.NewAuthenticator(
-		provider,
-		auth.config.Scheme,
-		auth.config.Host,
-		auth.config.Port,
-		auth.config.RouteGroup,
-		ctx)
+	authenticator, err := oauth.NewAuthenticator(provider, auth.config.fullPath, ctx)
 	if err != nil {
 		logrus.Error("oauth login callback failed, internal error: ", err)
 		ctx.JSON(http.StatusBadRequest, "oauth login callback failed, internal error")

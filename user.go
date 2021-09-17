@@ -8,17 +8,19 @@ import (
 
 // User of the system
 type User struct {
-	Id               uint `gorm:"primarykey"`
-	Username         string
-	Email            string
-	Password         string `json:"-"`
-	ExternalId       string
-	ExternalProvider string
-	Confirmed        bool
-	LastLogin        time.Time
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
-	DeletedAt        gorm.DeletedAt `gorm:"index"`
+	Id                      uint `gorm:"primarykey"`
+	Username                string
+	Email                   string
+	Password                string `json:"-"`
+	ExternalId              string
+	ExternalProvider        string
+	Confirmed               bool
+	ConfirmationToken       string `gorm:"unique"`
+	ConfirmationTokenExpiry *time.Time
+	LastLogin               time.Time
+	CreatedAt               time.Time
+	UpdatedAt               time.Time
+	DeletedAt               gorm.DeletedAt `gorm:"index"`
 }
 
 // getUserByEmail will get *User by email from database.

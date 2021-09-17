@@ -44,6 +44,12 @@ func main() {
 			viper.GetString("auth.cache.redis.password"),
 			viper.GetInt("auth.cache.db")),
 		EnableLocalLogin: true,
+		AccountConfirmation: hamr.NewAccountConfirmation(
+			"smtp.gmail.com",
+			587,
+			"",
+			"",
+			true),
 	})
 
 	// can be used to update other user fields during registration flow
