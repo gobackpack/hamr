@@ -25,15 +25,14 @@ type auth struct {
 
 // Config for *auth api
 type Config struct {
-	Scheme              string
-	Host                string
-	Port                string
-	RouteGroup          string
-	Router              *gin.Engine
-	Db                  *gorm.DB
-	CacheStorage        cache.Storage
-	EnableLocalLogin    bool
-	AccountConfirmation *accountConfirmation
+	Scheme           string
+	Host             string
+	Port             string
+	RouteGroup       string
+	Router           *gin.Engine
+	Db               *gorm.DB
+	CacheStorage     cache.Storage
+	EnableLocalLogin bool
 
 	adapter  *gormadapter.Adapter
 	basePath string
@@ -52,19 +51,17 @@ func New(config *Config) *auth {
 	config.RouteGroup = strings.Trim(config.RouteGroup, "/")
 	config.basePath = config.Scheme + "://" + config.Host + ":" + config.Port
 	config.fullPath = config.basePath + "/" + config.RouteGroup
-	config.AccountConfirmation.fullPath = config.fullPath
 
 	hamrAuth := &auth{
 		config: config,
 		service: &service{
-			accessTokenSecret:   []byte(viper.GetString("auth.access_token.secret")),
-			accessTokenExpiry:   time.Minute * time.Duration(viper.GetInt("auth.access_token.expiry")),
-			refreshTokenSecret:  []byte(viper.GetString("auth.refresh_token.secret")),
-			refreshTokenExpiry:  time.Minute * time.Duration(viper.GetInt("auth.refresh_token.expiry")),
-			db:                  config.Db,
-			cache:               config.CacheStorage,
-			casbinAdapter:       adapter,
-			accountConfirmation: config.AccountConfirmation,
+			accessTokenSecret:  []byte(viper.GetString("auth.access_token.secret")),
+			accessTokenExpiry:  time.Minute * time.Duration(viper.GetInt("auth.access_token.expiry")),
+			refreshTokenSecret: []byte(viper.GetString("auth.refresh_token.secret")),
+			refreshTokenExpiry: time.Minute * time.Duration(viper.GetInt("auth.refresh_token.expiry")),
+			db:                 config.Db,
+			cache:              config.CacheStorage,
+			casbinAdapter:      adapter,
 		},
 	}
 
@@ -123,6 +120,15 @@ func (auth *auth) Router() *gin.Engine {
 	return auth.config.Router
 }
 
+// SetAccountConfirmation api
+func (auth *auth) SetAccountConfirmation(accountConfirmation *accountConfirmation) {
+	accountConfirmation.fullPath = auth.config.fullPath
+	auth.accountConfirmation = accountConfirmation
+
+	r := auth.config.Router.Group(auth.config.RouteGroup)
+	r.GET("confirm", auth.confirmAccountHandler)
+}
+
 // initializeRoutes will map all auth routes with respective handlers
 func (auth *auth) initializeRoutes() {
 	r := auth.config.Router.Group(auth.config.RouteGroup)
@@ -135,10 +141,6 @@ func (auth *auth) initializeRoutes() {
 	if auth.config.EnableLocalLogin {
 		r.POST("register", auth.registerHandler)
 		r.POST("login", auth.loginHandler)
-	}
-
-	if auth.accountConfirmation != nil {
-		r.GET("confirm", auth.confirmAccountHandler)
 	}
 }
 

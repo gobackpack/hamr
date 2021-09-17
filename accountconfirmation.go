@@ -13,13 +13,13 @@ const confirmationEndpoint = "/confirm?token="
 
 // accountConfirmation api
 type accountConfirmation struct {
-	mailerConfig *mailerConfig
-	tokenExpiry  time.Time
-	fullPath     string
-	mailer       *mailer
-	from         string
-	subject      string
-	body         string
+	tokenExpiry time.Time
+	fullPath    string
+	mailer      *mailer
+	from        string
+	Subject     string
+	Body        string
+	LinkText    string
 }
 
 // NewAccountConfirmation will setup mailer and default configurations for *accountConfirmation api
@@ -36,22 +36,23 @@ func NewAccountConfirmation(host string, port int, username string, password str
 		mailer:      newMailer(mailConfig),
 		tokenExpiry: time.Now().Add(24 * time.Hour),
 		from:        mailConfig.username,
-		subject:     "Account Confirmation",
-		body:        "Confirm account by clicking on the link: ",
+		Subject:     "Account Confirmation",
+		Body:        "Confirm account by clicking on the link: ",
+		LinkText:    "Confirm",
 	}
 }
 
 // sendConfirmationEmail will send confirmation email to user
 func (accountConfirmation *accountConfirmation) sendConfirmationEmail(registeredUserEmail string, token string) error {
-	endpoint := "<a href=\"" + accountConfirmation.fullPath + confirmationEndpoint + token + "\">Confirm</a>"
+	endpoint := "<a href=\"" + accountConfirmation.fullPath + confirmationEndpoint + token + "\">" + accountConfirmation.LinkText + "</a>"
 
 	return accountConfirmation.mailer.send(
 		accountConfirmation.from,
 		registeredUserEmail,
 		"",
 		"",
-		accountConfirmation.subject,
-		accountConfirmation.body+endpoint)
+		accountConfirmation.Subject,
+		accountConfirmation.Body+" "+endpoint)
 }
 
 // confirmAccountHandler maps to account confirmation route
