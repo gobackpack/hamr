@@ -11,6 +11,7 @@ import (
 
 const confirmationEndpoint = "/confirm?token="
 
+// accountConfirmation api
 type accountConfirmation struct {
 	mailerConfig *mailerConfig
 	tokenExpiry  time.Time
@@ -21,6 +22,7 @@ type accountConfirmation struct {
 	body         string
 }
 
+// NewAccountConfirmation will setup mailer and default configurations for *accountConfirmation api
 func NewAccountConfirmation(host string, port int, username string, password string, useEncryption bool) *accountConfirmation {
 	mailConfig := &mailerConfig{
 		host:          host,
@@ -39,6 +41,7 @@ func NewAccountConfirmation(host string, port int, username string, password str
 	}
 }
 
+// sendConfirmationEmail will send confirmation email to user
 func (accountConfirmation *accountConfirmation) sendConfirmationEmail(registeredUserEmail string, token string) error {
 	endpoint := "<a href=\"" + accountConfirmation.fullPath + confirmationEndpoint + token + "\">Confirm</a>"
 
@@ -51,7 +54,7 @@ func (accountConfirmation *accountConfirmation) sendConfirmationEmail(registered
 		accountConfirmation.body+endpoint)
 }
 
-// registerHandler maps to register route
+// confirmAccountHandler maps to account confirmation route
 func (auth *auth) confirmAccountHandler(ctx *gin.Context) {
 	token := ctx.Query("token")
 
