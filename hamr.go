@@ -11,6 +11,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"gorm.io/gorm"
+	"strings"
 	"time"
 )
 
@@ -33,7 +34,9 @@ type Config struct {
 	CacheStorage     cache.Storage
 	EnableLocalLogin bool
 
-	adapter *gormadapter.Adapter
+	adapter  *gormadapter.Adapter
+	basePath string
+	fullPath string
 }
 
 // New will initialize *auth api
@@ -44,6 +47,10 @@ func New(config *Config) *auth {
 	}
 
 	config.adapter = adapter
+	config.Host = strings.Trim(config.Host, "/")
+	config.RouteGroup = strings.Trim(config.RouteGroup, "/")
+	config.basePath = config.Scheme + "://" + config.Host + ":" + config.Port
+	config.fullPath = config.basePath + "/" + config.RouteGroup
 
 	hamrAuth := &auth{
 		config: config,
@@ -113,20 +120,28 @@ func (auth *auth) Router() *gin.Engine {
 	return auth.config.Router
 }
 
+// SetAccountConfirmation api
+func (auth *auth) SetAccountConfirmation(accountConfirmation *accountConfirmation) {
+	accountConfirmation.fullPath = auth.config.fullPath
+	auth.accountConfirmation = accountConfirmation
+
+	r := auth.config.Router.Group(auth.config.RouteGroup)
+	r.GET("confirm", auth.confirmAccountHandler)
+}
+
 // initializeRoutes will map all auth routes with respective handlers
 func (auth *auth) initializeRoutes() {
 	r := auth.config.Router.Group(auth.config.RouteGroup)
+
+	r.GET(":provider/login", auth.oauthLoginHandler)
+	r.GET(":provider/callback", auth.oauthLoginCallbackHandler)
+	r.POST("logout", auth.AuthorizeRequest("", "", nil), auth.logoutHandler)
+	r.POST("token/refresh", auth.refreshTokenHandler)
 
 	if auth.config.EnableLocalLogin {
 		r.POST("register", auth.registerHandler)
 		r.POST("login", auth.loginHandler)
 	}
-
-	r.POST("logout", auth.AuthorizeRequest("", "", nil), auth.logoutHandler)
-	r.POST("token/refresh", auth.refreshTokenHandler)
-
-	r.GET(":provider/login", auth.oauthLoginHandler)
-	r.GET(":provider/callback", auth.oauthLoginCallbackHandler)
 }
 
 // runMigrations will automatically run migrations from /migrations/

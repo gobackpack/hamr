@@ -46,6 +46,20 @@ func main() {
 		EnableLocalLogin: true,
 	})
 
+	accountConfirmation := hamr.NewAccountConfirmation(
+		"smtp.gmail.com",
+		587,
+		"",
+		"",
+		true)
+
+	// optional
+	accountConfirmation.Subject = "Confirm Account"
+	accountConfirmation.Body = "Confirm clicking on the link: "
+	accountConfirmation.LinkText = "Here"
+
+	auth.SetAccountConfirmation(accountConfirmation)
+
 	// can be used to update other user fields during registration flow
 	auth.PostRegisterCallback = func(user *hamr.User, requestData map[string]interface{}) error {
 		logrus.Info("requestData: ", requestData)

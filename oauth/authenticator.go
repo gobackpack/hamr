@@ -12,7 +12,6 @@ import (
 	"github.com/spf13/viper"
 	"golang.org/x/oauth2"
 	"net/http"
-	"strings"
 	"time"
 )
 
@@ -29,8 +28,6 @@ var SupportedProviders = map[string]Provider{
 // Authenticator is responsible for oauth logins, oAuth2 configuration setup
 type Authenticator struct {
 	provider Provider
-	scheme   string
-	host     string
 	ctx      *gin.Context
 	config   *oauth2.Config
 }
@@ -43,24 +40,19 @@ type Provider interface {
 }
 
 // NewAuthenticator will setup *Authenticator, oAuth2 configuration
-func NewAuthenticator(provider, scheme, host, port, routeGroup string, ctx *gin.Context) (*Authenticator, error) {
+func NewAuthenticator(provider, fullPath string, ctx *gin.Context) (*Authenticator, error) {
 	providerInstance, ok := SupportedProviders[provider]
 	if !ok || providerInstance == nil {
 		return nil, errors.New("unsupported provider")
 	}
 
-	host = strings.Trim(host, "/")
-	routeGroup = strings.Trim(routeGroup, "/")
-
 	authenticator := &Authenticator{
 		provider: providerInstance,
-		scheme:   scheme,
-		host:     host,
 		ctx:      ctx,
 		config: &oauth2.Config{
 			ClientID:     viper.GetString("auth.provider." + provider + ".client_id"),
 			ClientSecret: viper.GetString("auth.provider." + provider + ".client_secret"),
-			RedirectURL:  scheme + "://" + host + ":" + port + "/" + routeGroup + "/" + provider + "/callback",
+			RedirectURL:  fullPath + "/" + provider + "/callback",
 			Scopes:       providerInstance.Scopes(),
 			Endpoint:     providerInstance.Endpoint(),
 		},
