@@ -11,7 +11,7 @@ type mailer struct {
 	smtpServer *mail.SMTPServer
 }
 
-// mailerConfig for *mailer
+// mailerConfig is configuration for *mailer
 type mailerConfig struct {
 	host          string
 	port          int
@@ -23,6 +23,7 @@ type mailerConfig struct {
 // newMailer will create *mailer based on passed *mailerConfig
 func newMailer(config *mailerConfig) *mailer {
 	server := mail.NewSMTPClient()
+
 	server.Host = config.host
 	server.Port = config.port
 	server.Username = config.username

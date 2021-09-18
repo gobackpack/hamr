@@ -19,34 +19,34 @@ const (
 	oAuthLoginAntiForgeryKey = "externalLoginAntiForgery"
 )
 
-// SupportedProviders are registered oauth providers for *Authenticator
+// SupportedProviders are registered oauth providers for *authenticator
 var SupportedProviders = map[string]Provider{
 	"google": &providers.Google{},
 	"github": &providers.Github{},
 }
 
-// Authenticator is responsible for oauth logins, oAuth2 configuration setup
-type Authenticator struct {
+// authenticator is responsible for oauth logins, oAuth2 configuration setup
+type authenticator struct {
 	provider Provider
 	ctx      *gin.Context
 	config   *oauth2.Config
 }
 
-// Provider specific requirements for *Authenticator
+// Provider specific requirements for *authenticator
 type Provider interface {
 	Scopes() []string
 	Endpoint() oauth2.Endpoint
 	GetUserInfo(string) (*models.UserInfo, error)
 }
 
-// NewAuthenticator will setup *Authenticator, oAuth2 configuration
-func NewAuthenticator(provider, fullPath string, ctx *gin.Context) (*Authenticator, error) {
+// NewAuthenticator will setup *authenticator, oAuth2 configuration
+func NewAuthenticator(provider, fullPath string, ctx *gin.Context) (*authenticator, error) {
 	providerInstance, ok := SupportedProviders[provider]
 	if !ok || providerInstance == nil {
 		return nil, errors.New("unsupported provider")
 	}
 
-	authenticator := &Authenticator{
+	auth := &authenticator{
 		provider: providerInstance,
 		ctx:      ctx,
 		config: &oauth2.Config{
@@ -58,37 +58,37 @@ func NewAuthenticator(provider, fullPath string, ctx *gin.Context) (*Authenticat
 		},
 	}
 
-	return authenticator, nil
+	return auth, nil
 }
 
 // RedirectToLoginUrl will redirect to oauth provider login url
-func (authenticator Authenticator) RedirectToLoginUrl() {
-	oAuthState, err := authenticator.setLoginAntiForgeryCookie()
+func (auth *authenticator) RedirectToLoginUrl() {
+	oAuthState, err := auth.setLoginAntiForgeryCookie()
 	if err != nil {
 		logrus.Error("failed to generate CSRF token")
 		return
 	}
 
-	oAuthLoginUrl := authenticator.config.AuthCodeURL(oAuthState)
+	oAuthLoginUrl := auth.config.AuthCodeURL(oAuthState)
 
-	http.Redirect(authenticator.ctx.Writer, authenticator.ctx.Request, oAuthLoginUrl, http.StatusTemporaryRedirect)
+	http.Redirect(auth.ctx.Writer, auth.ctx.Request, oAuthLoginUrl, http.StatusTemporaryRedirect)
 }
 
 // GetUserInfo from oauth provider
-func (authenticator Authenticator) GetUserInfo() (*models.UserInfo, error) {
-	token, err := authenticator.exchangeCodeForToken()
+func (auth *authenticator) GetUserInfo() (*models.UserInfo, error) {
+	token, err := auth.exchangeCodeForToken()
 	if err != nil {
 		return nil, err
 	}
 
-	return authenticator.provider.GetUserInfo(token.AccessToken)
+	return auth.provider.GetUserInfo(token.AccessToken)
 }
 
 // exchangeCodeForToken will validate state and exchange code for oauth token
-func (authenticator *Authenticator) exchangeCodeForToken() (*oauth2.Token, error) {
-	oAuthStateSaved, oAuthStateErr := authenticator.ctx.Request.Cookie(oAuthLoginAntiForgeryKey)
-	oAuthState := authenticator.ctx.Request.FormValue("state")
-	oAuthStateCode := authenticator.ctx.Request.FormValue("code")
+func (auth *authenticator) exchangeCodeForToken() (*oauth2.Token, error) {
+	oAuthStateSaved, oAuthStateErr := auth.ctx.Request.Cookie(oAuthLoginAntiForgeryKey)
+	oAuthState := auth.ctx.Request.FormValue("state")
+	oAuthStateCode := auth.ctx.Request.FormValue("code")
 
 	if oAuthStateErr != nil || oAuthState == "" {
 		return nil, errors.New("invalid oAuthStateSaved/oAuthState")
@@ -98,7 +98,7 @@ func (authenticator *Authenticator) exchangeCodeForToken() (*oauth2.Token, error
 		return nil, errors.New("oAuthState do not match")
 	}
 
-	token, err := authenticator.config.Exchange(context.Background(), oAuthStateCode)
+	token, err := auth.config.Exchange(context.Background(), oAuthStateCode)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +108,7 @@ func (authenticator *Authenticator) exchangeCodeForToken() (*oauth2.Token, error
 
 // setLoginAntiForgeryCookie will generate random state string and save it in cookies.
 // CSRF protection
-func (authenticator Authenticator) setLoginAntiForgeryCookie() (string, error) {
+func (auth *authenticator) setLoginAntiForgeryCookie() (string, error) {
 	b := make([]byte, 16)
 	_, err := rand.Read(b)
 	if err != nil {
@@ -119,7 +119,7 @@ func (authenticator Authenticator) setLoginAntiForgeryCookie() (string, error) {
 	var expiration = time.Now().Add(time.Minute * time.Duration(viper.GetInt("auth.state_expiry")))
 
 	cookie := http.Cookie{Name: oAuthLoginAntiForgeryKey, Value: state, Expires: expiration}
-	http.SetCookie(authenticator.ctx.Writer, &cookie)
+	http.SetCookie(auth.ctx.Writer, &cookie)
 
 	return state, nil
 }
