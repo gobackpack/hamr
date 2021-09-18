@@ -204,8 +204,7 @@ func (svc *service) destroyAuthenticationSession(accessToken string) error {
 	}
 
 	accessTokenUuid := accessTokenClaims["uuid"]
-	accessTokenUserId := accessTokenClaims["sub"]
-	if accessTokenUuid == nil || accessTokenUserId == nil {
+	if accessTokenUuid == nil {
 		return errors.New("invalid claims from access_token")
 	}
 
@@ -246,7 +245,7 @@ func (svc *service) refreshToken(refreshToken string) (authTokens, error) {
 		return nil, errors.New("invalid claims from refresh_token")
 	}
 
-	// make sure refresh token is still active
+	// make sure refresh token is still active, optional check
 	refreshTokenCachedBytes, err := svc.cache.Get(refreshTokenUuid.(string))
 	if err != nil {
 		return nil, errors.New("refresh_token is no longer active")
@@ -254,12 +253,10 @@ func (svc *service) refreshToken(refreshToken string) (authTokens, error) {
 
 	// get old access token uuid so it can be deleted from cache
 	// we do not need to validate it - it's already expired, probably does not even exists!
-
 	var refreshTokenCached map[string]interface{}
 	if err = json.Unmarshal(refreshTokenCachedBytes, &refreshTokenCached); err != nil {
 		return nil, err
 	}
-
 	accessTokenUuid, ok := refreshTokenCached["access_token_uuid"]
 	if !ok {
 		return nil, errors.New("access_token_uuid not found in cached refresh_token")
@@ -294,14 +291,12 @@ func (svc *service) createAuth(claims tokenClaims) (authTokens, error) {
 		return nil, err
 	}
 
-	// we do this so we can later easily find connection between access and refresh tokens
+	// these properties are created so we can later easily find connection between access and refresh tokens
 	// it's needed for easier cleanup on logout and refresh/token
-
 	accessTokenCacheValue := map[string]interface{}{
 		"sub":                claims["sub"],
 		"refresh_token_uuid": td.refreshTokenUuid,
 	}
-
 	refreshTokenCacheValue := map[string]interface{}{
 		"sub":               claims["sub"],
 		"access_token_uuid": td.accessTokenUuid,
