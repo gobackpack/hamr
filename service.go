@@ -198,8 +198,8 @@ func (svc *service) authenticateWithOAuth(userInfo *models.UserInfo, provider st
 
 // destroyAuthenticationSession will logout user. Remove access and refresh tokens from cache
 func (svc *service) destroyAuthenticationSession(accessToken string) error {
-	accessTokenClaims, aValid := svc.extractAccessTokenClaims(accessToken)
-	if !aValid {
+	accessTokenClaims, valid := svc.extractAccessTokenClaims(accessToken)
+	if !valid {
 		return errors.New("invalid access_token")
 	}
 

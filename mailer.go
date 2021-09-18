@@ -6,10 +6,12 @@ import (
 	"time"
 )
 
+// mailer is responsible for sending emails
 type mailer struct {
 	smtpServer *mail.SMTPServer
 }
 
+// mailerConfig for *mailer
 type mailerConfig struct {
 	host          string
 	port          int
@@ -18,6 +20,7 @@ type mailerConfig struct {
 	useEncryption bool
 }
 
+// newMailer will create *mailer based on passed *mailerConfig
 func newMailer(config *mailerConfig) *mailer {
 	server := mail.NewSMTPClient()
 	server.Host = config.host
@@ -36,6 +39,7 @@ func newMailer(config *mailerConfig) *mailer {
 	}
 }
 
+// send an email
 func (mailer *mailer) send(from, to, cc, bcc, subject, body string) error {
 	smtpClient, err := mailer.smtpServer.Connect()
 	if err != nil {

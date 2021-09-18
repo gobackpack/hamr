@@ -15,6 +15,9 @@ import (
 	"strings"
 )
 
+// initialization of different storage engines.
+// Postgres, MySql, SqlServer, Redis, Cache2Go, Sqlite
+
 func PostgresDb(fallbackConnStr string) *gorm.DB {
 	connString := env.Get("db_conn_string", fallbackConnStr)
 	if strings.TrimSpace(connString) == "" {
