@@ -62,6 +62,7 @@ func (svc *service) registerUser(user *User, requestData map[string]interface{})
 	}
 
 	user.Password = argon.Hashed
+	user.LastLogin = nil
 
 	if err := svc.addUser(user); err != nil {
 		return nil, err
@@ -108,7 +109,8 @@ func (svc *service) authenticate(email, password string) (authTokens, error) {
 	// user previously registered using local register (email + pwd), password already exists
 	// just validate credentials
 	if user.Password != "" && validateCredentials(user, password) {
-		user.LastLogin = time.Now().UTC()
+		lastLogin := time.Now().UTC()
+		user.LastLogin = &lastLogin
 
 		if err := svc.editUser(user); err != nil {
 			return nil, err
@@ -130,8 +132,10 @@ func (svc *service) authenticate(email, password string) (authTokens, error) {
 			return nil, err
 		}
 
+		lastLogin := time.Now().UTC()
+
 		user.Password = argon.Hashed
-		user.LastLogin = time.Now().UTC()
+		user.LastLogin = &lastLogin
 
 		if err := svc.editUser(user); err != nil {
 			return nil, err
@@ -155,12 +159,14 @@ func (svc *service) authenticateWithOAuth(userInfo *models.UserInfo, provider st
 
 	user := svc.getUserByEmail(email)
 	if user == nil {
+		lastLogin := time.Now().UTC()
+
 		user = &User{
 			Email:            email,
 			Username:         email,
 			ExternalId:       externalId,
 			ExternalProvider: provider,
-			LastLogin:        time.Now().UTC(),
+			LastLogin:        &lastLogin,
 		}
 
 		setAccountConfirmed(user)
@@ -175,9 +181,11 @@ func (svc *service) authenticateWithOAuth(userInfo *models.UserInfo, provider st
 			}
 		}
 	} else {
+		lastLogin := time.Now().UTC()
+
 		user.ExternalId = externalId
 		user.ExternalProvider = provider
-		user.LastLogin = time.Now().UTC()
+		user.LastLogin = &lastLogin
 
 		setAccountConfirmed(user)
 

@@ -8,16 +8,16 @@ import (
 
 // User of the system
 type User struct {
-	Id                      uint `gorm:"primarykey"`
-	Username                string
-	Email                   string
+	Id                      uint   `gorm:"primarykey"`
+	Username                string `gorm:"unique"`
+	Email                   string `gorm:"unique"`
 	Password                string `json:"-"`
 	ExternalId              string
 	ExternalProvider        string
 	Confirmed               bool
-	ConfirmationToken       string `gorm:"unique"`
+	ConfirmationToken       string
 	ConfirmationTokenExpiry *time.Time
-	LastLogin               time.Time
+	LastLogin               *time.Time
 	CreatedAt               time.Time
 	UpdatedAt               time.Time
 	DeletedAt               gorm.DeletedAt `gorm:"index"`

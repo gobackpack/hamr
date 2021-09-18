@@ -34,7 +34,7 @@ func NewAccountConfirmation(host string, port int, username string, password str
 
 	return &accountConfirmation{
 		mailer:      newMailer(mailConfig),
-		tokenExpiry: time.Now().Add(24 * time.Hour),
+		tokenExpiry: time.Now().UTC().Add(24 * time.Hour),
 		from:        mailConfig.username,
 		Subject:     "Account Confirmation",
 		Body:        "Confirm account by clicking on the link: ",
