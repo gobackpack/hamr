@@ -49,9 +49,9 @@ type authTokens map[string]string
 
 // registerUser will save user into database
 func (svc *service) registerUser(user *User, requestData map[string]interface{}) (*User, error) {
-	existing := svc.getUserByEmail(user.Email)
-	if existing != nil {
-		return nil, errors.New(fmt.Sprintf("user email or username is already registered: %v, %v", user.Username, user.Email))
+	existingUser := svc.getUserByEmail(user.Email)
+	if existingUser != nil {
+		return nil, errors.New(fmt.Sprintf("user email is already registered: %v", user.Email))
 	}
 
 	argon := crypto.NewArgon2()
@@ -297,12 +297,12 @@ func (svc *service) createAuth(claims tokenClaims) (authTokens, error) {
 	// we do this so we can later easily find connection between access and refresh tokens
 	// it's needed for easier cleanup on logout and refresh/token
 
-	accessTokenContent := map[string]interface{}{
+	accessTokenCacheValue := map[string]interface{}{
 		"sub":                claims["sub"],
 		"refresh_token_uuid": td.refreshTokenUuid,
 	}
 
-	refreshTokenContent := map[string]interface{}{
+	refreshTokenCacheValue := map[string]interface{}{
 		"sub":               claims["sub"],
 		"access_token_uuid": td.accessTokenUuid,
 	}
@@ -310,11 +310,11 @@ func (svc *service) createAuth(claims tokenClaims) (authTokens, error) {
 	if err = svc.cache.Store(
 		&cache.Item{
 			Key:        td.accessTokenUuid,
-			Value:      accessTokenContent,
+			Value:      accessTokenCacheValue,
 			Expiration: td.accessTokenExpiry,
 		}, &cache.Item{
 			Key:        td.refreshTokenUuid,
-			Value:      refreshTokenContent,
+			Value:      refreshTokenCacheValue,
 			Expiration: td.refreshTokenExpiry,
 		}); err != nil {
 		return nil, err
