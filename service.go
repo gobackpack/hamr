@@ -125,26 +125,28 @@ func (svc *service) authenticate(email, password string) (authTokens, error) {
 	} else if user.Password == "" && user.ExternalId != "" {
 		// user previously registered with oauth provider (etc. google)
 		// password does not exist, create new
-		argon := crypto.NewArgon2()
-		argon.Plain = password
+		//argon := crypto.NewArgon2()
+		//argon.Plain = password
+		//
+		//if err := argon.Hash(); err != nil {
+		//	return nil, err
+		//}
+		//
+		//user.Password = argon.Hashed
+		//user.LastLogin = &lastLogin
+		//
+		//if err := svc.editUser(user); err != nil {
+		//	return nil, err
+		//}
+		//
+		//tokens, err := svc.createAuth(claims)
+		//if err != nil {
+		//	return nil, err
+		//}
+		//
+		//return tokens, nil
 
-		if err := argon.Hash(); err != nil {
-			return nil, err
-		}
-
-		user.Password = argon.Hashed
-		user.LastLogin = &lastLogin
-
-		if err := svc.editUser(user); err != nil {
-			return nil, err
-		}
-
-		tokens, err := svc.createAuth(claims)
-		if err != nil {
-			return nil, err
-		}
-
-		return tokens, nil
+		return nil, errors.New(fmt.Sprintf("please login with %s account or set new password from account settings", user.ExternalProvider))
 	}
 
 	return nil, errors.New("invalid credentials")
