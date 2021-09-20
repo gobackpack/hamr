@@ -117,13 +117,13 @@ func (svc *service) authenticate(email, password string) (authTokens, error) {
 
 		if err := svc.editUser(user); err != nil {
 			logrus.Errorf("updating user %s during authentication failed: %v", email, err)
-			return nil, errors.New("authentication failed, internal error")
+			return nil, errors.New("authentication failed")
 		}
 
 		tokens, err := svc.createAuth(claims)
 		if err != nil {
 			logrus.Errorf("user %s failed to authenticate: %v", email, err)
-			return nil, errors.New("authentication failed, internal error")
+			return nil, errors.New("authentication failed")
 		}
 
 		return tokens, nil
@@ -154,7 +154,8 @@ func (svc *service) authenticateWithOAuth(userInfo *models.UserInfo, provider st
 		setAccountConfirmed(user)
 
 		if err := svc.addUser(user); err != nil {
-			return nil, err
+			logrus.Errorf("failed to save user %s in database: %v", email, err)
+			return nil, errors.New("authentication failed")
 		}
 
 		if svc.PostRegisterCallback != nil {
@@ -172,7 +173,7 @@ func (svc *service) authenticateWithOAuth(userInfo *models.UserInfo, provider st
 
 		if err := svc.editUser(user); err != nil {
 			logrus.Errorf("updating user %s during authentication failed: %v", email, err)
-			return nil, errors.New("authentication failed, internal error")
+			return nil, errors.New("authentication failed")
 		}
 	}
 
@@ -181,7 +182,7 @@ func (svc *service) authenticateWithOAuth(userInfo *models.UserInfo, provider st
 	tokens, err := svc.createAuth(claims)
 	if err != nil {
 		logrus.Errorf("user %s failed to authenticate: %v", email, err)
-		return nil, errors.New("authentication failed, internal error")
+		return nil, errors.New("authentication failed")
 	}
 
 	return tokens, nil
@@ -202,7 +203,7 @@ func (svc *service) destroyAuthenticationSession(accessToken string) error {
 	accessTokenCachedBytes, err := svc.cache.Get(accessTokenUuid.(string))
 	if err != nil {
 		logrus.Errorf("failed to get access token from cache, uuid: %s, token: %s", accessTokenUuid.(string), accessToken)
-		return errors.New("failed to destroy authentication session, internal error")
+		return errors.New("failed to destroy authentication session")
 	}
 
 	var accessTokenCached map[string]interface{}
@@ -211,7 +212,7 @@ func (svc *service) destroyAuthenticationSession(accessToken string) error {
 			"failed to unmarshal access token from cache, uuid: %s, bytes: %s",
 			accessTokenUuid.(string),
 			string(accessTokenCachedBytes))
-		return errors.New("failed to destroy authentication session, internal error")
+		return errors.New("failed to destroy authentication session")
 	}
 
 	refreshTokenUuid, ok := accessTokenCached["refresh_token_uuid"]
@@ -224,7 +225,7 @@ func (svc *service) destroyAuthenticationSession(accessToken string) error {
 			"failed to delete tokens from cache, access token uuid: %s, refresh token uuid: %s",
 			accessTokenUuid.(string),
 			refreshTokenUuid.(string))
-		return errors.New("failed to destroy authentication session, internal error")
+		return errors.New("failed to destroy authentication session")
 	}
 
 	return nil
@@ -259,7 +260,7 @@ func (svc *service) refreshToken(refreshToken string) (authTokens, error) {
 			"failed to unmarshal refresh token from cache, uuid: %s, bytes: %s",
 			refreshTokenUuid.(string),
 			string(refreshTokenCachedBytes))
-		return nil, errors.New("refresh token failed, internal error")
+		return nil, errors.New("refresh token failed")
 	}
 	accessTokenUuid, ok := refreshTokenCached["access_token_uuid"]
 	if !ok {
@@ -274,7 +275,7 @@ func (svc *service) refreshToken(refreshToken string) (authTokens, error) {
 			"failed to delete tokens from cache, access token uuid: %s, refresh token uuid: %s",
 			accessTokenUuid.(string),
 			refreshTokenUuid.(string))
-		return nil, errors.New("refresh token failed, internal error")
+		return nil, errors.New("refresh token failed")
 	}
 
 	// generate new access token and refresh token
@@ -283,7 +284,7 @@ func (svc *service) refreshToken(refreshToken string) (authTokens, error) {
 	tokens, err := svc.createAuth(claims)
 	if err != nil {
 		logrus.Errorf("refresh token failed to create new token pairs: %v", err)
-		return nil, errors.New("refresh token failed, internal error")
+		return nil, errors.New("refresh token failed")
 	}
 
 	return tokens, nil

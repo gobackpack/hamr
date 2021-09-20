@@ -43,7 +43,7 @@ type Provider interface {
 func NewAuthenticator(provider, fullPath string, ctx *gin.Context) (*authenticator, error) {
 	providerInstance, ok := SupportedProviders[provider]
 	if !ok || providerInstance == nil {
-		return nil, errors.New("unsupported provider")
+		return nil, errors.New("unsupported provider: " + provider)
 	}
 
 	auth := &authenticator{
@@ -78,10 +78,17 @@ func (auth *authenticator) RedirectToLoginUrl() {
 func (auth *authenticator) GetUserInfo() (*models.UserInfo, error) {
 	token, err := auth.exchangeCodeForToken()
 	if err != nil {
-		return nil, err
+		logrus.Errorf("failed to exchange code for token: %v", err)
+		return nil, errors.New("failed to get token from oauth provider")
 	}
 
-	return auth.provider.GetUserInfo(token.AccessToken)
+	userInfo, err := auth.provider.GetUserInfo(token.AccessToken)
+	if err != nil {
+		logrus.Errorf("failed to get user info from oauth provider: %v", err)
+		return nil, errors.New("failed to get user info from oauth provider")
+	}
+
+	return userInfo, nil
 }
 
 // exchangeCodeForToken will validate state and exchange code for oauth token
