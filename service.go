@@ -51,25 +51,28 @@ type authTokens map[string]string
 func (svc *service) registerUser(user *User, requestData map[string]interface{}) (*User, error) {
 	existingUser := svc.getUserByEmail(user.Email)
 	if existingUser != nil {
-		return nil, errors.New(fmt.Sprintf("user email is already registered: %v", user.Email))
+		return nil, errors.New("user email is already registered: " + user.Email)
 	}
 
 	argon := crypto.NewArgon2()
 	argon.Plain = user.Password
 
 	if err := argon.Hash(); err != nil {
-		return nil, err
+		logrus.Errorf("password hash for user %s failed: %v", user.Email, err)
+		return nil, errors.New("failed to hash password")
 	}
 
 	user.Password = argon.Hashed
 	user.LastLogin = nil
 
 	if err := svc.addUser(user); err != nil {
-		return nil, err
+		logrus.Errorf("failed to save user %s in database: %v", user.Email, err)
+		return nil, errors.New("failed to save user")
 	}
 
 	if svc.PostRegisterCallback != nil {
 		if err := svc.PostRegisterCallback(user, requestData); err != nil {
+			logrus.Errorf("PostRegisterCallback for user %s failed: %v", user.Email, err)
 			return nil, err
 		}
 	}
@@ -78,14 +81,14 @@ func (svc *service) registerUser(user *User, requestData map[string]interface{})
 		go func(user *User) {
 			token := uuid.New().String()
 			if err := svc.accountConfirmation.sendConfirmationEmail(user.Email, token); err != nil {
-				logrus.Error(err)
+				logrus.Errorf("send account confirmation to email %s failed: %v", user.Email, err)
 			}
 
 			user.ConfirmationToken = token
 			user.ConfirmationTokenExpiry = &svc.accountConfirmation.tokenExpiry
 
 			if err := svc.editUser(user); err != nil {
-				logrus.Error(err)
+				logrus.Errorf("update account confirmation for user %s failed: %v", user.Email, err)
 			}
 		}(user)
 	}
@@ -97,7 +100,7 @@ func (svc *service) registerUser(user *User, requestData map[string]interface{})
 func (svc *service) authenticate(email, password string) (authTokens, error) {
 	user := svc.getUserByEmail(email)
 	if user == nil {
-		return nil, errors.New("user email not registered: " + email)
+		return nil, errors.New(fmt.Sprintf("user email %s not registered", email))
 	}
 
 	if svc.accountConfirmation != nil && !user.Confirmed {
@@ -107,45 +110,24 @@ func (svc *service) authenticate(email, password string) (authTokens, error) {
 	claims := generateAuthClaims(user.Id, user.Email)
 	lastLogin := time.Now().UTC()
 
-	// user previously registered using local register (email + pwd), password already exists
-	// just validate credentials
+	// user previously registered using local register (email + pwd)
+	// password exists, validate credentials
 	if user.Password != "" && validateCredentials(user, password) {
 		user.LastLogin = &lastLogin
 
 		if err := svc.editUser(user); err != nil {
-			return nil, err
+			logrus.Errorf("updating user %s during authentication failed: %v", email, err)
+			return nil, errors.New("authentication failed, internal error")
 		}
 
 		tokens, err := svc.createAuth(claims)
 		if err != nil {
-			return nil, err
+			logrus.Errorf("user %s failed to authenticate: %v", email, err)
+			return nil, errors.New("authentication failed, internal error")
 		}
 
 		return tokens, nil
-	} else if user.Password == "" && user.ExternalId != "" {
-		// user previously registered with oauth provider (etc. google)
-		// password does not exist, create new
-		//argon := crypto.NewArgon2()
-		//argon.Plain = password
-		//
-		//if err := argon.Hash(); err != nil {
-		//	return nil, err
-		//}
-		//
-		//user.Password = argon.Hashed
-		//user.LastLogin = &lastLogin
-		//
-		//if err := svc.editUser(user); err != nil {
-		//	return nil, err
-		//}
-		//
-		//tokens, err := svc.createAuth(claims)
-		//if err != nil {
-		//	return nil, err
-		//}
-		//
-		//return tokens, nil
-
+	} else if user.Password == "" && user.ExternalProvider != "" {
 		return nil, errors.New(fmt.Sprintf("please login with %s account or set new password from account settings", user.ExternalProvider))
 	}
 
@@ -177,6 +159,7 @@ func (svc *service) authenticateWithOAuth(userInfo *models.UserInfo, provider st
 
 		if svc.PostRegisterCallback != nil {
 			if err := svc.PostRegisterCallback(user, nil); err != nil {
+				logrus.Errorf("PostRegisterCallback for user %s failed: %v", user.Email, err)
 				return nil, err
 			}
 		}
@@ -188,7 +171,8 @@ func (svc *service) authenticateWithOAuth(userInfo *models.UserInfo, provider st
 		setAccountConfirmed(user)
 
 		if err := svc.editUser(user); err != nil {
-			return nil, err
+			logrus.Errorf("updating user %s during authentication failed: %v", email, err)
+			return nil, errors.New("authentication failed, internal error")
 		}
 	}
 
@@ -196,7 +180,8 @@ func (svc *service) authenticateWithOAuth(userInfo *models.UserInfo, provider st
 
 	tokens, err := svc.createAuth(claims)
 	if err != nil {
-		return nil, err
+		logrus.Errorf("user %s failed to authenticate: %v", email, err)
+		return nil, errors.New("authentication failed, internal error")
 	}
 
 	return tokens, nil
@@ -216,12 +201,17 @@ func (svc *service) destroyAuthenticationSession(accessToken string) error {
 
 	accessTokenCachedBytes, err := svc.cache.Get(accessTokenUuid.(string))
 	if err != nil {
-		return err
+		logrus.Errorf("failed to get access token from cache, uuid: %s, token: %s", accessTokenUuid.(string), accessToken)
+		return errors.New("failed to destroy authentication session, internal error")
 	}
 
 	var accessTokenCached map[string]interface{}
 	if err = json.Unmarshal(accessTokenCachedBytes, &accessTokenCached); err != nil {
-		return err
+		logrus.Errorf(
+			"failed to unmarshal access token from cache, uuid: %s, bytes: %s",
+			accessTokenUuid.(string),
+			string(accessTokenCachedBytes))
+		return errors.New("failed to destroy authentication session, internal error")
 	}
 
 	refreshTokenUuid, ok := accessTokenCached["refresh_token_uuid"]
@@ -230,7 +220,11 @@ func (svc *service) destroyAuthenticationSession(accessToken string) error {
 	}
 
 	if err = svc.cache.Delete(accessTokenUuid.(string), refreshTokenUuid.(string)); err != nil {
-		return err
+		logrus.Errorf(
+			"failed to delete tokens from cache, access token uuid: %s, refresh token uuid: %s",
+			accessTokenUuid.(string),
+			refreshTokenUuid.(string))
+		return errors.New("failed to destroy authentication session, internal error")
 	}
 
 	return nil
@@ -261,7 +255,11 @@ func (svc *service) refreshToken(refreshToken string) (authTokens, error) {
 	// we do not need to validate it - it's already expired, probably does not even exists!
 	var refreshTokenCached map[string]interface{}
 	if err = json.Unmarshal(refreshTokenCachedBytes, &refreshTokenCached); err != nil {
-		return nil, err
+		logrus.Errorf(
+			"failed to unmarshal refresh token from cache, uuid: %s, bytes: %s",
+			refreshTokenUuid.(string),
+			string(refreshTokenCachedBytes))
+		return nil, errors.New("refresh token failed, internal error")
 	}
 	accessTokenUuid, ok := refreshTokenCached["access_token_uuid"]
 	if !ok {
@@ -272,7 +270,11 @@ func (svc *service) refreshToken(refreshToken string) (authTokens, error) {
 
 	// delete refresh token uuid
 	if err = svc.cache.Delete(refreshTokenUuid.(string), accessTokenUuid.(string)); err != nil {
-		return nil, err
+		logrus.Errorf(
+			"failed to delete tokens from cache, access token uuid: %s, refresh token uuid: %s",
+			accessTokenUuid.(string),
+			refreshTokenUuid.(string))
+		return nil, errors.New("refresh token failed, internal error")
 	}
 
 	// generate new access token and refresh token
@@ -280,7 +282,8 @@ func (svc *service) refreshToken(refreshToken string) (authTokens, error) {
 
 	tokens, err := svc.createAuth(claims)
 	if err != nil {
-		return nil, err
+		logrus.Errorf("refresh token failed to create new token pairs: %v", err)
+		return nil, errors.New("refresh token failed, internal error")
 	}
 
 	return tokens, nil

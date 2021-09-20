@@ -4,7 +4,6 @@ import (
 	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/gobackpack/hamr/oauth"
-	"github.com/sirupsen/logrus"
 	"net/http"
 )
 
@@ -18,14 +17,12 @@ type loginRequest struct {
 func (auth *auth) registerHandler(ctx *gin.Context) {
 	var requestData map[string]interface{}
 	if err := ctx.ShouldBind(&requestData); err != nil {
-		logrus.Error("registration failed, invalid data: ", err)
-		ctx.JSON(http.StatusUnprocessableEntity, "registration failed, invalid data")
+		ctx.JSON(http.StatusUnprocessableEntity, err.Error())
 		return
 	}
 
 	if err := validateRequestData(requestData); err != nil {
-		logrus.Error("registration failed, invalid data: ", err)
-		ctx.JSON(http.StatusUnprocessableEntity, "registration failed, invalid data")
+		ctx.JSON(http.StatusUnprocessableEntity, err.Error())
 		return
 	}
 
@@ -35,8 +32,7 @@ func (auth *auth) registerHandler(ctx *gin.Context) {
 		Password: requestData["password"].(string),
 	}, requestData)
 	if err != nil {
-		logrus.Error("registration failed, internal error: ", err)
-		ctx.JSON(http.StatusBadRequest, "registration failed, internal error")
+		ctx.JSON(http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -47,15 +43,13 @@ func (auth *auth) registerHandler(ctx *gin.Context) {
 func (auth *auth) loginHandler(ctx *gin.Context) {
 	var req *loginRequest
 	if err := ctx.ShouldBind(&req); err != nil {
-		logrus.Error("login failed, invalid data: ", err)
-		ctx.JSON(http.StatusUnprocessableEntity, "login failed, invalid data")
+		ctx.JSON(http.StatusUnprocessableEntity, err.Error())
 		return
 	}
 
 	tokens, err := auth.service.authenticate(req.Email, req.Password)
 	if err != nil {
-		logrus.Error("login failed, internal error: ", err)
-		ctx.JSON(http.StatusBadRequest, "login failed, internal error")
+		ctx.JSON(http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -67,8 +61,7 @@ func (auth *auth) logoutHandler(ctx *gin.Context) {
 	_, accessToken := getAccessTokenFromRequest(ctx)
 
 	if err := auth.service.destroyAuthenticationSession(accessToken); err != nil {
-		logrus.Error("logout failed, internal error: ", err)
-		ctx.JSON(http.StatusBadRequest, "logout failed, internal error")
+		ctx.JSON(http.StatusBadRequest, err.Error())
 		return
 	}
 }
@@ -77,21 +70,18 @@ func (auth *auth) logoutHandler(ctx *gin.Context) {
 func (auth *auth) refreshTokenHandler(ctx *gin.Context) {
 	refreshTokenRequest := map[string]string{}
 	if err := ctx.ShouldBindJSON(&refreshTokenRequest); err != nil {
-		logrus.Error("refresh token failed, invalid data: ", err)
-		ctx.JSON(http.StatusUnprocessableEntity, "refresh token failed, invalid data")
+		ctx.JSON(http.StatusUnprocessableEntity, err.Error())
 		return
 	}
 	refreshToken, ok := refreshTokenRequest["refresh_token"]
 	if !ok {
-		logrus.Error("refresh token failed, invalid data: missing refresh_token field")
-		ctx.JSON(http.StatusUnprocessableEntity, "refresh token failed, invalid data")
+		ctx.JSON(http.StatusUnprocessableEntity, "refresh token failed, invalid data: missing refresh_token")
 		return
 	}
 
 	tokens, err := auth.service.refreshToken(refreshToken)
 	if err != nil {
-		logrus.Error("refresh token failed, internal error: ", err)
-		ctx.JSON(http.StatusBadRequest, "refresh token failed, internal error")
+		ctx.JSON(http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -104,8 +94,7 @@ func (auth *auth) oauthLoginHandler(ctx *gin.Context) {
 
 	authenticator, err := oauth.NewAuthenticator(provider, auth.config.fullPath, ctx)
 	if err != nil {
-		logrus.Error("oauth login redirect failed, internal error: ", err)
-		ctx.JSON(http.StatusBadRequest, "oauth login redirect failed, internal error")
+		ctx.JSON(http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -118,22 +107,19 @@ func (auth *auth) oauthLoginCallbackHandler(ctx *gin.Context) {
 
 	authenticator, err := oauth.NewAuthenticator(provider, auth.config.fullPath, ctx)
 	if err != nil {
-		logrus.Error("oauth login callback failed, internal error: ", err)
-		ctx.JSON(http.StatusBadRequest, "oauth login callback failed, internal error")
+		ctx.JSON(http.StatusBadRequest, err.Error())
 		return
 	}
 
 	userInfo, err := authenticator.GetUserInfo()
 	if err != nil {
-		logrus.Error("oauth login callback failed, internal error: ", err)
-		ctx.JSON(http.StatusBadRequest, "oauth login callback failed, internal error")
+		ctx.JSON(http.StatusBadRequest, err.Error())
 		return
 	}
 
 	tokens, err := auth.service.authenticateWithOAuth(userInfo, provider)
 	if err != nil {
-		logrus.Error("oauth login callback failed, internal error: ", err)
-		ctx.JSON(http.StatusBadRequest, "oauth login callback failed, internal error")
+		ctx.JSON(http.StatusBadRequest, err.Error())
 		return
 	}
 
