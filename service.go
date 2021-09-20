@@ -51,7 +51,7 @@ type authTokens map[string]string
 func (svc *service) registerUser(user *User, requestData map[string]interface{}) (*User, error) {
 	existingUser := svc.getUserByEmail(user.Email)
 	if existingUser != nil {
-		return nil, errors.New("user email is already registered: " + user.Email)
+		return nil, errors.New("user email is already registered")
 	}
 
 	argon := crypto.NewArgon2()
@@ -59,7 +59,7 @@ func (svc *service) registerUser(user *User, requestData map[string]interface{})
 
 	if err := argon.Hash(); err != nil {
 		logrus.Errorf("password hash for user %s failed: %v", user.Email, err)
-		return nil, errors.New("failed to hash password")
+		return nil, errors.New("registration failed")
 	}
 
 	user.Password = argon.Hashed
@@ -67,7 +67,7 @@ func (svc *service) registerUser(user *User, requestData map[string]interface{})
 
 	if err := svc.addUser(user); err != nil {
 		logrus.Errorf("failed to save user %s in database: %v", user.Email, err)
-		return nil, errors.New("failed to save user")
+		return nil, errors.New("registration failed")
 	}
 
 	if svc.PostRegisterCallback != nil {
