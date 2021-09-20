@@ -60,14 +60,13 @@ func (auth *auth) confirmAccountHandler(ctx *gin.Context) {
 	token := ctx.Query("token")
 
 	if strings.TrimSpace(token) == "" {
-		logrus.Error("account confirmation failed, internal error: missing token from request")
-		ctx.JSON(http.StatusBadRequest, "account confirmation failed, internal error")
+		logrus.Error("account confirmation failed: missing token from request")
+		ctx.JSON(http.StatusBadRequest, "account confirmation failed")
 		return
 	}
 
 	if err := auth.service.confirmAccount(token); err != nil {
-		logrus.Error("account confirmation failed, internal error: ", err)
-		ctx.JSON(http.StatusBadRequest, "account confirmation failed, internal error")
+		ctx.JSON(http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -79,7 +78,7 @@ func (svc *service) confirmAccount(token string) error {
 	user := svc.getUserByConfirmationToken(token)
 
 	if user == nil {
-		return errors.New("invalid user")
+		return errors.New("confirmation token does not exist")
 	}
 
 	if user.Confirmed {
@@ -92,7 +91,12 @@ func (svc *service) confirmAccount(token string) error {
 
 	setAccountConfirmed(user)
 
-	return svc.editUser(user)
+	if err := svc.editUser(user); err != nil {
+		logrus.Errorf("failed to update user %s during account confirmation: %v", user.Email, err)
+		return errors.New("account confirmation failed")
+	}
+
+	return nil
 }
 
 // getUserByConfirmationToken will get *User by confirmation from database.

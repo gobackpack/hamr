@@ -52,7 +52,7 @@ func (*Github) GetUserInfo(accessToken string) (*models.UserInfo, error) {
 
 	contents, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read code exchange response: %s", err.Error())
+		return nil, err
 	}
 
 	r := &githubResponse{}

@@ -2,7 +2,6 @@ package providers
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/gobackpack/hamr/oauth/models"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
@@ -32,7 +31,7 @@ func (*Google) GetUserInfo(accessToken string) (*models.UserInfo, error) {
 
 	resp, err := http.Get(exchangeUrl)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get user info from code exchange: %s", err.Error())
+		return nil, err
 	}
 	defer func() {
 		err = resp.Body.Close()
@@ -44,7 +43,7 @@ func (*Google) GetUserInfo(accessToken string) (*models.UserInfo, error) {
 
 	contents, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read code exchange response: %s", err.Error())
+		return nil, err
 	}
 
 	r := &googleResponse{}
