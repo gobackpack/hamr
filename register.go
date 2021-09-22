@@ -4,10 +4,8 @@ import (
 	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/gobackpack/crypto"
-	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"net/http"
-	"time"
 )
 
 // registerHandler maps to register route
@@ -69,18 +67,8 @@ func (auth *auth) registerUser(user *User, requestData map[string]interface{}) (
 
 	if auth.config.accountConfirmation != nil {
 		go func(user *User) {
-			token := uuid.New().String()
-			expiry := time.Now().UTC().Add(auth.config.accountConfirmation.tokenExpiry)
-
-			if err := auth.config.accountConfirmation.sendConfirmationEmail(user.Email, token); err != nil {
-				logrus.Errorf("send account confirmation to email %s failed: %v", user.Email, err)
-			}
-
-			user.ConfirmationToken = token
-			user.ConfirmationTokenExpiry = &expiry
-
-			if err := auth.editUser(user); err != nil {
-				logrus.Errorf("update account confirmation for user %s failed: %v", user.Email, err)
+			if err := auth.beginConfirmation(user); err != nil {
+				logrus.Errorf("account confirmation failed: %v", err)
 			}
 		}(user)
 	}

@@ -95,20 +95,9 @@ func (auth *auth) resendAccountConfirmationEmailHandler(ctx *gin.Context) {
 	}
 
 	if auth.config.accountConfirmation != nil && !user.Confirmed {
-		token := uuid.New().String()
-		expiry := time.Now().UTC().Add(auth.config.accountConfirmation.tokenExpiry)
-		user.ConfirmationToken = token
-		user.ConfirmationTokenExpiry = &expiry
-
-		if err := auth.editUser(user); err != nil {
-			logrus.Errorf("update account confirmation for user %s failed: %v", user.Email, err)
-			ctx.JSON(http.StatusBadRequest, "update failed")
-			return
-		}
-
-		if err := auth.config.accountConfirmation.sendConfirmationEmail(user.Email, token); err != nil {
-			logrus.Errorf("send account confirmation to email %s failed: %v", user.Email, err)
-			ctx.JSON(http.StatusBadRequest, "send failed")
+		if err := auth.beginConfirmation(user); err != nil {
+			logrus.Errorf("account confirmation failed: %v", err)
+			ctx.JSON(http.StatusBadRequest, "account confirmation failed")
 			return
 		}
 
@@ -156,6 +145,21 @@ func (auth *auth) getUserByConfirmationToken(token string) *User {
 	}
 
 	return usrEntity
+}
+
+// beginConfirmation will start the process of account confirmation.
+// Assign confirmation token to user and send an email and
+func (auth *auth) beginConfirmation(user *User) error {
+	token := uuid.New().String()
+	expiry := time.Now().UTC().Add(auth.config.accountConfirmation.tokenExpiry)
+	user.ConfirmationToken = token
+	user.ConfirmationTokenExpiry = &expiry
+
+	if err := auth.editUser(user); err != nil {
+		return err
+	}
+
+	return auth.config.accountConfirmation.sendConfirmationEmail(user.Email, token)
 }
 
 // setAccountConfirmed will set Confirmed to true and reset other confirmation fields to zero values
