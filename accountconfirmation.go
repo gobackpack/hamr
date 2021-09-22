@@ -10,17 +10,23 @@ import (
 	"time"
 )
 
-const confirmationEndpoint = "/confirm?token="
+const (
+	confirmationEndpoint      = "/confirm?token="
+	confirmationEmailSubject  = "Account Confirmation"
+	confirmationEmailBody     = "Confirm account by clicking on the link: "
+	confirmationEmailLinkText = "Confirm"
+)
 
 // accountConfirmation api
 type accountConfirmation struct {
+	Subject  string
+	Body     string
+	LinkText string
+
 	tokenExpiry time.Duration
 	fullPath    string
 	mailer      *mailer
 	from        string
-	Subject     string
-	Body        string
-	LinkText    string
 }
 
 // resendConfirmationRequest
@@ -39,12 +45,12 @@ func NewAccountConfirmation(host string, port int, username string, password str
 	}
 
 	return &accountConfirmation{
+		Subject:     confirmationEmailSubject,
+		Body:        confirmationEmailBody,
+		LinkText:    confirmationEmailLinkText,
 		mailer:      newMailer(mailConfig),
 		from:        mailConfig.username,
 		tokenExpiry: 24 * time.Hour,
-		Subject:     "Account Confirmation",
-		Body:        "Confirm account by clicking on the link: ",
-		LinkText:    "Confirm",
 	}
 }
 
