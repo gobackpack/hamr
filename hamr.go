@@ -96,6 +96,7 @@ func (auth *auth) SetAccountConfirmation(accountConfirmation *accountConfirmatio
 
 	r := auth.config.Router.Group(auth.config.RouteGroup)
 	r.GET("confirm", auth.confirmAccountHandler)
+	r.POST("confirm/resend", auth.resendAccountConfirmationEmailHandler)
 }
 
 // initializeRoutes will map all auth routes with respective handlers

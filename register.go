@@ -7,13 +7,15 @@ import (
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"net/http"
+	"time"
 )
 
 // registerHandler maps to register route
 func (auth *auth) registerHandler(ctx *gin.Context) {
 	var requestData map[string]interface{}
 	if err := ctx.ShouldBind(&requestData); err != nil {
-		ctx.JSON(http.StatusUnprocessableEntity, err.Error())
+		logrus.Errorf("request data binding failed: %v", err)
+		ctx.JSON(http.StatusUnprocessableEntity, "invalid request data")
 		return
 	}
 
@@ -68,12 +70,14 @@ func (auth *auth) registerUser(user *User, requestData map[string]interface{}) (
 	if auth.config.accountConfirmation != nil {
 		go func(user *User) {
 			token := uuid.New().String()
+			expiry := time.Now().UTC().Add(auth.config.accountConfirmation.tokenExpiry)
+
 			if err := auth.config.accountConfirmation.sendConfirmationEmail(user.Email, token); err != nil {
 				logrus.Errorf("send account confirmation to email %s failed: %v", user.Email, err)
 			}
 
 			user.ConfirmationToken = token
-			user.ConfirmationTokenExpiry = &auth.config.accountConfirmation.tokenExpiry
+			user.ConfirmationTokenExpiry = &expiry
 
 			if err := auth.editUser(user); err != nil {
 				logrus.Errorf("update account confirmation for user %s failed: %v", user.Email, err)

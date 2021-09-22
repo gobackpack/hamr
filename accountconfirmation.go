@@ -3,6 +3,7 @@ package hamr
 import (
 	"errors"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"net/http"
 	"strings"
@@ -13,13 +14,18 @@ const confirmationEndpoint = "/confirm?token="
 
 // accountConfirmation api
 type accountConfirmation struct {
-	tokenExpiry time.Time
+	tokenExpiry time.Duration
 	fullPath    string
 	mailer      *mailer
 	from        string
 	Subject     string
 	Body        string
 	LinkText    string
+}
+
+// resendConfirmationRequest
+type resendConfirmationRequest struct {
+	Email string `json:"email"`
 }
 
 // NewAccountConfirmation will setup mailer and default configurations for *accountConfirmation api
@@ -34,8 +40,8 @@ func NewAccountConfirmation(host string, port int, username string, password str
 
 	return &accountConfirmation{
 		mailer:      newMailer(mailConfig),
-		tokenExpiry: time.Now().UTC().Add(24 * time.Hour),
 		from:        mailConfig.username,
+		tokenExpiry: 24 * time.Hour,
 		Subject:     "Account Confirmation",
 		Body:        "Confirm account by clicking on the link: ",
 		LinkText:    "Confirm",
@@ -71,6 +77,41 @@ func (auth *auth) confirmAccountHandler(ctx *gin.Context) {
 	}
 
 	ctx.Redirect(http.StatusTemporaryRedirect, auth.config.basePath)
+}
+
+// resendAccountConfirmationEmailHandler maps to resend account confirmation email route
+func (auth *auth) resendAccountConfirmationEmailHandler(ctx *gin.Context) {
+	requestData := &resendConfirmationRequest{}
+	if err := ctx.ShouldBind(&requestData); err != nil {
+		logrus.Errorf("request data binding failed: %v", err)
+		ctx.JSON(http.StatusUnprocessableEntity, "invalid request data")
+		return
+	}
+
+	user := auth.getUserByEmail(requestData.Email)
+	if user == nil {
+		ctx.JSON(http.StatusBadRequest, "user not found")
+		return
+	}
+
+	if auth.config.accountConfirmation != nil && !user.Confirmed {
+		token := uuid.New().String()
+		expiry := time.Now().UTC().Add(auth.config.accountConfirmation.tokenExpiry)
+		user.ConfirmationToken = token
+		user.ConfirmationTokenExpiry = &expiry
+
+		if err := auth.config.accountConfirmation.sendConfirmationEmail(user.Email, token); err != nil {
+			logrus.Errorf("send account confirmation to email %s failed: %v", user.Email, err)
+		}
+
+		if err := auth.editUser(user); err != nil {
+			logrus.Errorf("update account confirmation for user %s failed: %v", user.Email, err)
+			ctx.JSON(http.StatusBadRequest, "update failed")
+			return
+		}
+
+		ctx.Redirect(http.StatusTemporaryRedirect, auth.config.basePath)
+	}
 }
 
 // confirmAccount will set confirmed to true and unset confirmation_token
