@@ -105,6 +105,21 @@ func (auth *auth) resendAccountConfirmationEmailHandler(ctx *gin.Context) {
 	}
 }
 
+// beginConfirmation will start the process of account confirmation.
+// Assign confirmation token to user and send an email and
+func (auth *auth) beginConfirmation(user *User) error {
+	token := uuid.New().String()
+	expiry := time.Now().UTC().Add(auth.config.accountConfirmation.tokenExpiry)
+	user.ConfirmationToken = token
+	user.ConfirmationTokenExpiry = &expiry
+
+	if err := auth.editUser(user); err != nil {
+		return err
+	}
+
+	return auth.config.accountConfirmation.sendConfirmationEmail(user.Email, token)
+}
+
 // confirmAccount will set confirmed to true and unset confirmation_token
 func (auth *auth) confirmAccount(token string) error {
 	user := auth.getUserByConfirmationToken(token)
@@ -145,21 +160,6 @@ func (auth *auth) getUserByConfirmationToken(token string) *User {
 	}
 
 	return usrEntity
-}
-
-// beginConfirmation will start the process of account confirmation.
-// Assign confirmation token to user and send an email and
-func (auth *auth) beginConfirmation(user *User) error {
-	token := uuid.New().String()
-	expiry := time.Now().UTC().Add(auth.config.accountConfirmation.tokenExpiry)
-	user.ConfirmationToken = token
-	user.ConfirmationTokenExpiry = &expiry
-
-	if err := auth.editUser(user); err != nil {
-		return err
-	}
-
-	return auth.config.accountConfirmation.sendConfirmationEmail(user.Email, token)
 }
 
 // setAccountConfirmed will set Confirmed to true and reset other confirmation fields to zero values
