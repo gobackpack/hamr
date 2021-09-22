@@ -25,10 +25,10 @@ type User struct {
 
 // getUserByEmail will get *User by email from database.
 // This user is used in authentication process (login: local + oauth) and in validation during registration process
-func (svc *service) getUserByEmail(email string) *User {
+func (auth *auth) getUserByEmail(email string) *User {
 	var usrEntity *User
 
-	if result := svc.db.Where("email", email).Find(&usrEntity); result.Error != nil {
+	if result := auth.config.Db.Where("email", email).Find(&usrEntity); result.Error != nil {
 		return nil
 	}
 
@@ -40,8 +40,8 @@ func (svc *service) getUserByEmail(email string) *User {
 }
 
 // addUser will create new *User in database. During registration process or first time using oauth login (auto-register)
-func (svc *service) addUser(user *User) error {
-	tx := svc.db.Begin()
+func (auth *auth) addUser(user *User) error {
+	tx := auth.config.Db.Begin()
 	defer func() {
 		if r := recover(); r != nil {
 			tx.Rollback()
@@ -68,6 +68,6 @@ func (svc *service) addUser(user *User) error {
 }
 
 // editUser will update *User. Used in authentication process (updating login provider and password)
-func (svc *service) editUser(user *User) error {
-	return svc.db.Save(user).Error
+func (auth *auth) editUser(user *User) error {
+	return auth.config.Db.Save(user).Error
 }

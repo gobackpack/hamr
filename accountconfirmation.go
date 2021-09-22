@@ -65,7 +65,7 @@ func (auth *auth) confirmAccountHandler(ctx *gin.Context) {
 		return
 	}
 
-	if err := auth.service.confirmAccount(token); err != nil {
+	if err := auth.confirmAccount(token); err != nil {
 		ctx.JSON(http.StatusBadRequest, err.Error())
 		return
 	}
@@ -74,8 +74,8 @@ func (auth *auth) confirmAccountHandler(ctx *gin.Context) {
 }
 
 // confirmAccount will set confirmed to true and unset confirmation_token
-func (svc *service) confirmAccount(token string) error {
-	user := svc.getUserByConfirmationToken(token)
+func (auth *auth) confirmAccount(token string) error {
+	user := auth.getUserByConfirmationToken(token)
 
 	if user == nil {
 		return errors.New("confirmation token does not exist")
@@ -91,7 +91,7 @@ func (svc *service) confirmAccount(token string) error {
 
 	setAccountConfirmed(user)
 
-	if err := svc.editUser(user); err != nil {
+	if err := auth.editUser(user); err != nil {
 		logrus.Errorf("failed to update user %s during account confirmation: %v", user.Email, err)
 		return errors.New("account confirmation failed")
 	}
@@ -101,10 +101,10 @@ func (svc *service) confirmAccount(token string) error {
 
 // getUserByConfirmationToken will get *User by confirmation from database.
 // Used for account confirmation
-func (svc *service) getUserByConfirmationToken(token string) *User {
+func (auth *auth) getUserByConfirmationToken(token string) *User {
 	var usrEntity *User
 
-	if result := svc.db.Where("confirmation_token", token).Find(&usrEntity); result.Error != nil {
+	if result := auth.config.Db.Where("confirmation_token", token).Find(&usrEntity); result.Error != nil {
 		return nil
 	}
 

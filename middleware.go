@@ -1,7 +1,6 @@
 package hamr
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/casbin/casbin/v2"
 	gormadapter "github.com/casbin/gorm-adapter/v3"
@@ -14,7 +13,7 @@ import (
 
 // authorize middleware will check if request is authorized.
 // If adapter is passed Casbin policy will be checked as well
-func (svc *service) authorize(obj, act string, adapter *gormadapter.Adapter) gin.HandlerFunc {
+func (auth *auth) authorize(obj, act string, adapter *gormadapter.Adapter) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		_, token := getAccessTokenFromRequest(ctx)
 		if strings.TrimSpace(token) == "" {
@@ -23,7 +22,7 @@ func (svc *service) authorize(obj, act string, adapter *gormadapter.Adapter) gin
 			return
 		}
 
-		claims, valid := svc.extractAccessTokenClaims(token)
+		claims, valid := auth.extractAccessTokenClaims(token)
 		if claims == nil || !valid {
 			logrus.Error("invalid access token claims, valid: ", valid)
 			ctx.AbortWithStatus(http.StatusUnauthorized)
@@ -38,20 +37,13 @@ func (svc *service) authorize(obj, act string, adapter *gormadapter.Adapter) gin
 			return
 		}
 
-		accessTokenCachedBytes, err := svc.cache.Get(accessTokenUuid.(string))
+		accessTokenCached, err := auth.getTokenFromCache(accessTokenUuid.(string))
 		if err != nil {
-			logrus.Error("failed to get accessToken from cache: ", err)
+			logrus.Error("failed to get access token from cache: ", err)
 			ctx.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
 
-		var accessTokenCached map[string]interface{}
-		if err = json.Unmarshal(accessTokenCachedBytes, &accessTokenCached); err != nil {
-			logrus.Error("failed to unmarshal accessTokenBytes: ", err)
-			logrus.Warn("accessTokenBytes: ", string(accessTokenCachedBytes))
-			ctx.AbortWithStatus(http.StatusUnauthorized)
-			return
-		}
 		userIdFromCacheClaims, ok := accessTokenCached["sub"]
 		if !ok {
 			logrus.Error("sub not found in accessTokenCached")
@@ -78,23 +70,6 @@ func (svc *service) authorize(obj, act string, adapter *gormadapter.Adapter) gin
 
 		ctx.Next()
 	}
-}
-
-// getAccessTokenFromRequest will extract access token from request's Authorization headers
-func getAccessTokenFromRequest(ctx *gin.Context) (string, string) {
-	authHeader := strings.Split(ctx.GetHeader("Authorization"), " ")
-	if len(authHeader) != 2 {
-		ctx.AbortWithStatus(http.StatusUnauthorized)
-		return "", ""
-	}
-
-	schema, token := authHeader[0], authHeader[1]
-	if schema != "Bearer" {
-		ctx.AbortWithStatus(http.StatusUnauthorized)
-		return "", ""
-	}
-
-	return schema, token
 }
 
 // enforce Casbin policy

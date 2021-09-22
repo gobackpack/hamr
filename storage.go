@@ -5,7 +5,6 @@ import (
 	"github.com/gobackpack/hamr/internal/cache/c2go"
 	"github.com/gobackpack/hamr/internal/cache/redis"
 	"github.com/gobackpack/hamr/internal/cache/sqlite"
-	"github.com/gobackpack/hamr/internal/env"
 	"github.com/sirupsen/logrus"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
@@ -15,11 +14,10 @@ import (
 	"strings"
 )
 
-// initialization of different storage engines.
+// helpers for initialization of different storage engines.
 // Postgres, MySql, SqlServer, Redis, Cache2Go, Sqlite
 
-func PostgresDb(fallbackConnStr string) *gorm.DB {
-	connString := env.Get("db_conn_string", fallbackConnStr)
+func PostgresDb(connString string) *gorm.DB {
 	if strings.TrimSpace(connString) == "" {
 		logrus.Error("missing connection string [env|config.yml]")
 		logrus.Warn("CAUTION! service will be running without database connection!")
@@ -37,8 +35,7 @@ func PostgresDb(fallbackConnStr string) *gorm.DB {
 	return db
 }
 
-func MySqlDb(fallbackConnStr string) *gorm.DB {
-	connString := env.Get("db_conn_string", fallbackConnStr)
+func MySqlDb(connString string) *gorm.DB {
 	if strings.TrimSpace(connString) == "" {
 		logrus.Error("missing connection string [env|config.yml]")
 		logrus.Warn("CAUTION! service will be running without database connection!")
@@ -56,8 +53,7 @@ func MySqlDb(fallbackConnStr string) *gorm.DB {
 	return db
 }
 
-func SqlServerDb(fallbackConnStr string) *gorm.DB {
-	connString := env.Get("db_conn_string", fallbackConnStr)
+func SqlServerDb(connString string) *gorm.DB {
 	if strings.TrimSpace(connString) == "" {
 		logrus.Error("missing connection string [env|config.yml]")
 		logrus.Warn("CAUTION! service will be running without database connection!")

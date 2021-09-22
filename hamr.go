@@ -1,68 +1,37 @@
 package hamr
 
 import (
-	"flag"
 	gormadapter "github.com/casbin/gorm-adapter/v3"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/gobackpack/hamr/internal/cache"
 	"github.com/gobackpack/hamr/internal/httpserver"
 	"github.com/gobackpack/hamr/oauth"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
-	"gorm.io/gorm"
 	"strings"
 	"time"
 )
 
-var Path = flag.String("cpath", "config/", "configuration path")
-
-// auth main api
-type auth struct {
-	config *Config
-	*service
-}
-
-// Config for *auth api
-type Config struct {
-	Scheme           string
-	Host             string
-	Port             string
-	RouteGroup       string
-	Router           *gin.Engine
-	Db               *gorm.DB
-	CacheStorage     cache.Storage
-	EnableLocalLogin bool
-
-	adapter  *gormadapter.Adapter
-	basePath string
-	fullPath string
-}
-
 // New will initialize *auth api
 func New(config *Config) *auth {
-	adapter, err := gormadapter.NewAdapterByDB(config.Db)
-	if err != nil {
-		logrus.Fatal("failed to initialize casbin adapter: ", err)
-	}
-
-	config.adapter = adapter
+	config.accessTokenSecret = []byte(viper.GetString("auth.access_token.secret"))
+	config.accessTokenExpiry = time.Minute * time.Duration(viper.GetInt("auth.access_token.expiry"))
+	config.refreshTokenSecret = []byte(viper.GetString("auth.refresh_token.secret"))
+	config.refreshTokenExpiry = time.Minute * time.Duration(viper.GetInt("auth.refresh_token.expiry"))
 	config.Host = strings.Trim(config.Host, "/")
 	config.RouteGroup = strings.Trim(config.RouteGroup, "/")
 	config.basePath = config.Scheme + "://" + config.Host + ":" + config.Port
 	config.fullPath = config.basePath + "/" + config.RouteGroup
 
+	adapter, err := gormadapter.NewAdapterByDB(config.Db)
+	if err != nil {
+		logrus.Fatal("failed to initialize casbin adapter: ", err)
+	}
+
+	config.casbinAdapter = adapter
+
 	hamrAuth := &auth{
 		config: config,
-		service: &service{
-			accessTokenSecret:  []byte(viper.GetString("auth.access_token.secret")),
-			accessTokenExpiry:  time.Minute * time.Duration(viper.GetInt("auth.access_token.expiry")),
-			refreshTokenSecret: []byte(viper.GetString("auth.refresh_token.secret")),
-			refreshTokenExpiry: time.Minute * time.Duration(viper.GetInt("auth.refresh_token.expiry")),
-			db:                 config.Db,
-			cache:              config.CacheStorage,
-			casbinAdapter:      adapter,
-		},
 	}
 
 	hamrAuth.initializeRoutes()
@@ -107,12 +76,12 @@ func (auth *auth) RegisterProvider(name string, provider oauth.Provider) {
 
 // AuthorizeRequest is middleware to protect endpoints
 func (auth *auth) AuthorizeRequest(obj string, act string, adapter *gormadapter.Adapter) gin.HandlerFunc {
-	return auth.service.authorize(obj, act, adapter)
+	return auth.authorize(obj, act, adapter)
 }
 
 // CasbinAdapter will return initialized Casbin adapter. Required for protection with Casbin policies
 func (auth *auth) CasbinAdapter() *gormadapter.Adapter {
-	return auth.service.casbinAdapter
+	return auth.config.casbinAdapter
 }
 
 // Router will return router assigned on *auth initialization
@@ -123,7 +92,7 @@ func (auth *auth) Router() *gin.Engine {
 // SetAccountConfirmation api
 func (auth *auth) SetAccountConfirmation(accountConfirmation *accountConfirmation) {
 	accountConfirmation.fullPath = auth.config.fullPath
-	auth.accountConfirmation = accountConfirmation
+	auth.config.accountConfirmation = accountConfirmation
 
 	r := auth.config.Router.Group(auth.config.RouteGroup)
 	r.GET("confirm", auth.confirmAccountHandler)
