@@ -100,13 +100,15 @@ func (auth *auth) resendAccountConfirmationEmailHandler(ctx *gin.Context) {
 		user.ConfirmationToken = token
 		user.ConfirmationTokenExpiry = &expiry
 
-		if err := auth.config.accountConfirmation.sendConfirmationEmail(user.Email, token); err != nil {
-			logrus.Errorf("send account confirmation to email %s failed: %v", user.Email, err)
-		}
-
 		if err := auth.editUser(user); err != nil {
 			logrus.Errorf("update account confirmation for user %s failed: %v", user.Email, err)
 			ctx.JSON(http.StatusBadRequest, "update failed")
+			return
+		}
+
+		if err := auth.config.accountConfirmation.sendConfirmationEmail(user.Email, token); err != nil {
+			logrus.Errorf("send account confirmation to email %s failed: %v", user.Email, err)
+			ctx.JSON(http.StatusBadRequest, "send failed")
 			return
 		}
 
