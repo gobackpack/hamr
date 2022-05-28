@@ -12,6 +12,10 @@ import (
 	"time"
 )
 
+/*
+Exposes *auth api, binds it all together
+*/
+
 // New will initialize *auth api
 func New(config *Config) *auth {
 	config.accessTokenSecret = []byte(viper.GetString("auth.access_token.secret"))

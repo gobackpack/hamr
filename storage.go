@@ -11,64 +11,27 @@ import (
 	"gorm.io/driver/sqlserver"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
-	"strings"
 )
 
 // helpers for initialization of different storage engines.
 // Postgres, MySql, SqlServer, Redis, Cache2Go, Sqlite
 
-func PostgresDb(connString string) *gorm.DB {
-	if strings.TrimSpace(connString) == "" {
-		logrus.Error("missing connection string [env|config.yml]")
-		logrus.Warn("CAUTION! service will be running without database connection!")
-		return nil
-	}
-
-	db, err := gorm.Open(postgres.Open(connString), &gorm.Config{
+func PostgresDb(connString string) (*gorm.DB, error) {
+	return gorm.Open(postgres.Open(connString), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
 	})
-	if err != nil {
-		logrus.Error("failed to connect database: ", err)
-		logrus.Warn("CAUTION! service will be running without database connection!")
-	}
-
-	return db
 }
 
-func MySqlDb(connString string) *gorm.DB {
-	if strings.TrimSpace(connString) == "" {
-		logrus.Error("missing connection string [env|config.yml]")
-		logrus.Warn("CAUTION! service will be running without database connection!")
-		return nil
-	}
-
-	db, err := gorm.Open(mysql.Open(connString), &gorm.Config{
+func MySqlDb(connString string) (*gorm.DB, error) {
+	return gorm.Open(mysql.Open(connString), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
 	})
-	if err != nil {
-		logrus.Error("failed to connect database: ", err)
-		logrus.Warn("CAUTION! service will be running without database connection!")
-	}
-
-	return db
 }
 
-func SqlServerDb(connString string) *gorm.DB {
-	if strings.TrimSpace(connString) == "" {
-		logrus.Error("missing connection string [env|config.yml]")
-		logrus.Warn("CAUTION! service will be running without database connection!")
-		return nil
-	}
-
-	db, err := gorm.Open(sqlserver.Open(connString), &gorm.Config{
+func SqlServerDb(connString string) (*gorm.DB, error) {
+	return gorm.Open(sqlserver.Open(connString), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
 	})
-	if err != nil {
-		logrus.Error("failed to connect database: ", err)
-		logrus.Warn("CAUTION! service will be running without database connection!")
-	}
-
-	return db
 }
 
 func NewRedisCacheStorage(host, port, password string, cacheDb int) cache.Storage {

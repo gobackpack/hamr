@@ -73,7 +73,7 @@ func (auth *auth) oauthLoginCallbackHandler(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, tokens)
 }
 
-// authenticate will use local login (email + pwd) to login user. Validate credentials and save tokens in cache
+// authenticate will login user with local login (email + pwd), validate credentials and save tokens in cache
 func (auth *auth) authenticate(email, password string) (authTokens, error) {
 	user := auth.getUserByEmail(email)
 	if user == nil {

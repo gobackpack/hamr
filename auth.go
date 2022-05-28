@@ -9,11 +9,16 @@ import (
 	"github.com/gobackpack/hamr/internal/cache"
 	"github.com/gobackpack/jwt"
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 	"net/http"
 	"strings"
 	"time"
 )
+
+/*
+Responsible for tokens (access, refresh), claims and sessions.
+*/
 
 var Path = flag.String("cpath", "config/", "configuration path")
 
@@ -86,75 +91,24 @@ func (auth *auth) createSession(claims tokenClaims) (authTokens, error) {
 
 // generateTokens will generate pair of access and refresh tokens
 func (auth *auth) generateTokens(claims tokenClaims) (*tokenDetails, error) {
-	// access_token
-	accessToken := &jwt.Token{
-		Secret: auth.config.accessTokenSecret,
-	}
-
-	accessTokenClaims := make(map[string]interface{})
-	for k, v := range claims {
-		accessTokenClaims[k] = v
-	}
-	accessTokenUuid := uuid.New().String()
-	accessTokenClaims["exp"] = jwt.TokenExpiry(auth.config.accessTokenExpiry)
-	accessTokenClaims["uuid"] = accessTokenUuid
-
-	accessTokenStr, err := accessToken.Generate(accessTokenClaims)
+	accessTokenUuid, accessTokenValue, err := generateToken(auth.config.accessTokenSecret, auth.config.accessTokenExpiry, claims)
 	if err != nil {
 		return nil, err
 	}
 
-	// refresh_token
-	refreshToken := &jwt.Token{
-		Secret: auth.config.refreshTokenSecret,
-	}
-
-	refreshTokenClaims := make(map[string]interface{})
-	for k, v := range claims {
-		refreshTokenClaims[k] = v
-	}
-	refreshTokenUuid := uuid.New().String()
-	refreshTokenClaims["exp"] = jwt.TokenExpiry(auth.config.refreshTokenExpiry)
-	refreshTokenClaims["uuid"] = refreshTokenUuid
-
-	refreshTokenTokenValue, err := refreshToken.Generate(refreshTokenClaims)
+	refreshTokenUuid, refreshTokenValue, err := generateToken(auth.config.refreshTokenSecret, auth.config.refreshTokenExpiry, claims)
 	if err != nil {
 		return nil, err
 	}
 
 	return &tokenDetails{
-		accessToken:        accessTokenStr,
+		accessToken:        accessTokenValue,
 		accessTokenUuid:    accessTokenUuid,
 		accessTokenExpiry:  auth.config.accessTokenExpiry,
-		refreshToken:       refreshTokenTokenValue,
+		refreshToken:       refreshTokenValue,
 		refreshTokenUuid:   refreshTokenUuid,
 		refreshTokenExpiry: auth.config.refreshTokenExpiry,
 	}, nil
-}
-
-// extractAccessTokenClaims will validate and extract access token claims. Access token secret is used for validation
-func (auth *auth) extractAccessTokenClaims(accessToken string) (map[string]interface{}, bool) {
-	return extractToken(accessToken, auth.config.accessTokenSecret)
-}
-
-// extractRefreshTokenClaims will validate and extract refresh token. Refresh token secret is used for validation
-func (auth *auth) extractRefreshTokenClaims(refreshToken string) (map[string]interface{}, bool) {
-	return extractToken(refreshToken, auth.config.refreshTokenSecret)
-}
-
-// getTokenFromCache will get and unmarshal token from cache
-func (auth *auth) getTokenFromCache(tokenUuid string) (map[string]interface{}, error) {
-	cachedTokenBytes, err := auth.config.CacheStorage.Get(tokenUuid)
-	if err != nil {
-		return nil, errors.New("token is no longer active")
-	}
-
-	var cachedToken map[string]interface{}
-	if err = json.Unmarshal(cachedTokenBytes, &cachedToken); err != nil {
-		return nil, errors.New("token unmarshal failed: " + err.Error())
-	}
-
-	return cachedToken, nil
 }
 
 // storeTokensInCache will save access and refresh tokens in cache
@@ -183,13 +137,63 @@ func (auth *auth) storeTokensInCache(sub interface{}, td *tokenDetails) error {
 		})
 }
 
-// extractToken will validate and extract claims from given token
-func extractToken(token string, secret []byte) (map[string]interface{}, bool) {
-	jwtToken := &jwt.Token{
-		Secret: secret,
+// destroySession will remove access and refresh tokens from cache
+func (auth *auth) destroySession(accessToken string) error {
+	accessTokenClaims, valid := auth.extractAccessTokenClaims(accessToken)
+	if !valid {
+		return errors.New("invalid access_token")
 	}
 
-	return jwtToken.ValidateAndExtract(token)
+	accessTokenUuid := accessTokenClaims["uuid"]
+	if accessTokenUuid == nil {
+		return errors.New("invalid claims from access_token")
+	}
+
+	accessTokenCached, err := auth.getTokenFromCache(accessTokenUuid.(string))
+	if err != nil {
+		logrus.Error("failed to get access token from cache: ", err)
+		return errors.New("logout failed")
+	}
+
+	refreshTokenUuid, ok := accessTokenCached["refresh_token_uuid"]
+	if !ok {
+		return errors.New("refresh_token_uuid not found in cached access_token")
+	}
+
+	if err = auth.config.CacheStorage.Delete(accessTokenUuid.(string), refreshTokenUuid.(string)); err != nil {
+		logrus.Errorf(
+			"failed to delete tokens from cache, access token uuid: %s, refresh token uuid: %s",
+			accessTokenUuid.(string),
+			refreshTokenUuid.(string))
+		return errors.New("failed to destroy authentication session")
+	}
+
+	return nil
+}
+
+// extractAccessTokenClaims will validate and extract access token claims. Access token secret is used for validation
+func (auth *auth) extractAccessTokenClaims(accessToken string) (map[string]interface{}, bool) {
+	return extractToken(accessToken, auth.config.accessTokenSecret)
+}
+
+// extractRefreshTokenClaims will validate and extract refresh token. Refresh token secret is used for validation
+func (auth *auth) extractRefreshTokenClaims(refreshToken string) (map[string]interface{}, bool) {
+	return extractToken(refreshToken, auth.config.refreshTokenSecret)
+}
+
+// getTokenFromCache will get and unmarshal token from cache
+func (auth *auth) getTokenFromCache(tokenUuid string) (map[string]interface{}, error) {
+	cachedTokenBytes, err := auth.config.CacheStorage.Get(tokenUuid)
+	if err != nil {
+		return nil, errors.New("token is no longer active")
+	}
+
+	var cachedToken map[string]interface{}
+	if err = json.Unmarshal(cachedTokenBytes, &cachedToken); err != nil {
+		return nil, errors.New("getTokenFromCache unmarshal failed: " + err.Error())
+	}
+
+	return cachedToken, nil
 }
 
 // validateClaims will check for required *tokenClaims
@@ -205,6 +209,39 @@ func validateClaims(claims tokenClaims) error {
 	}
 
 	return nil
+}
+
+// generateToken is used for both access and refresh token.
+// It will generate token value and uuid.
+// Can be split into two separate functions if needed (ex. different claims used)
+func generateToken(tokenSecret []byte, tokenExpiry time.Duration, claims tokenClaims) (string, string, error) {
+	token := &jwt.Token{
+		Secret: tokenSecret,
+	}
+
+	tClaims := make(map[string]interface{})
+	for k, v := range claims {
+		tClaims[k] = v
+	}
+	tUuid := uuid.New().String()
+	tClaims["exp"] = jwt.TokenExpiry(tokenExpiry)
+	tClaims["uuid"] = tUuid
+
+	tValue, err := token.Generate(tClaims)
+	if err != nil {
+		return "", "", err
+	}
+
+	return tUuid, tValue, nil
+}
+
+// extractToken will validate and extract claims from given token
+func extractToken(token string, secret []byte) (map[string]interface{}, bool) {
+	jwtToken := &jwt.Token{
+		Secret: secret,
+	}
+
+	return jwtToken.ValidateAndExtract(token)
 }
 
 // generateAuthClaims for access token

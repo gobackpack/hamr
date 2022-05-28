@@ -29,7 +29,11 @@ func main() {
 	hamr.InitializeViper()
 
 	router := hamr.NewRouter()
-	db := hamr.PostgresDb(viper.GetString("database.connstring"))
+
+	db, err := hamr.PostgresDb(viper.GetString("database.connstring"))
+	if err != nil {
+		logrus.Fatal(err)
+	}
 
 	auth := hamr.New(&hamr.Config{
 		Scheme:     "http",
@@ -90,8 +94,8 @@ func main() {
 		return nil
 	}
 
-	if err := db.AutoMigrate(&User{}); err != nil {
-		logrus.Fatal("failed to migrate *User: ", err)
+	if err = db.AutoMigrate(&User{}); err != nil {
+		logrus.Fatal(err)
 	}
 
 	// register custom provider
