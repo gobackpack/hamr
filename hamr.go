@@ -40,6 +40,7 @@ func New(config *Config) *auth {
 
 	hamrAuth.initializeRoutes()
 	hamrAuth.runMigrations()
+	seedCasbinPolicy(config.Db)
 
 	return hamrAuth
 }
