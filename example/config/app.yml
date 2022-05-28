@@ -1,5 +1,5 @@
 database:
-  connstring: host=localhost port=5432 dbname=my_db_name user=postgres password=postgres sslmode=disable
+  connstring: host=localhost port=5432 dbname=webapp user=postgres password=postgres sslmode=disable
 auth:
   provider:
     google:
