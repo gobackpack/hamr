@@ -253,7 +253,8 @@ func generateAuthClaims(sub uint, email string) tokenClaims {
 	return claims
 }
 
-// getAccessTokenFromRequest will extract access token from request's Authorization headers
+// getAccessTokenFromRequest will extract access token from request's Authorization headers.
+// Returns schema and access_token.
 func getAccessTokenFromRequest(ctx *gin.Context) (string, string) {
 	authHeader := strings.Split(ctx.GetHeader("Authorization"), " ")
 	if len(authHeader) != 2 {
