@@ -12,6 +12,10 @@ import (
 	"time"
 )
 
+/*
+Login module.
+*/
+
 // loginRequest http API model
 type loginRequest struct {
 	Email    string `json:"email"`

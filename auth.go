@@ -17,6 +17,7 @@ import (
 )
 
 /*
+Main module.
 Responsible for tokens (access, refresh), claims and sessions.
 */
 

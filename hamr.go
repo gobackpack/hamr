@@ -13,7 +13,8 @@ import (
 )
 
 /*
-Exposes *auth api, binds it all together
+Hamr module.
+Exposes *auth api, binds it all together.
 */
 
 // New will initialize *auth api

@@ -13,8 +13,10 @@ import (
 	"gorm.io/gorm/logger"
 )
 
-// helpers for initialization of different storage engines.
-// Postgres, MySql, SqlServer, Redis, Cache2Go, Sqlite
+/*
+Helpers for initialization of different storages.
+Postgres, MySql, SqlServer, Redis, Cache2Go, Sqlite.
+*/
 
 func PostgresDb(connString string) (*gorm.DB, error) {
 	return gorm.Open(postgres.Open(connString), &gorm.Config{

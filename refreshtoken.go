@@ -7,6 +7,10 @@ import (
 	"net/http"
 )
 
+/*
+Refresh token module.
+*/
+
 // refreshTokenHandler maps to refresh token route
 func (auth *auth) refreshTokenHandler(ctx *gin.Context) {
 	refreshTokenRequest := map[string]string{}

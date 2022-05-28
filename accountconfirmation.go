@@ -10,6 +10,10 @@ import (
 	"time"
 )
 
+/*
+Account confirmation module.
+*/
+
 const (
 	confirmationEndpoint      = "/confirm?token="
 	confirmationEmailSubject  = "Account Confirmation"

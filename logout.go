@@ -5,6 +5,10 @@ import (
 	"net/http"
 )
 
+/*
+Logout module.
+*/
+
 // logoutHandler maps to log out route
 func (auth *auth) logoutHandler(ctx *gin.Context) {
 	_, accessToken := getAccessTokenFromRequest(ctx)

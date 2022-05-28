@@ -8,6 +8,10 @@ import (
 	"net/http"
 )
 
+/*
+User registration module.
+*/
+
 // registerHandler maps to register route
 func (auth *auth) registerHandler(ctx *gin.Context) {
 	var requestData map[string]interface{}
