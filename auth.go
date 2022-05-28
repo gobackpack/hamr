@@ -52,10 +52,10 @@ type Config struct {
 
 // tokenDetails holds access and refresh token details
 type tokenDetails struct {
-	accessToken        string
+	accessTokenValue   string
 	accessTokenUuid    string
 	accessTokenExpiry  time.Duration
-	refreshToken       string
+	refreshTokenValue  string
 	refreshTokenUuid   string
 	refreshTokenExpiry time.Duration
 }
@@ -83,8 +83,8 @@ func (auth *auth) createSession(claims tokenClaims) (authTokens, error) {
 	}
 
 	tokens := make(authTokens)
-	tokens["access_token"] = td.accessToken
-	tokens["refresh_token"] = td.refreshToken
+	tokens["access_token"] = td.accessTokenValue
+	tokens["refresh_token"] = td.refreshTokenValue
 
 	return tokens, nil
 }
@@ -102,10 +102,10 @@ func (auth *auth) generateTokens(claims tokenClaims) (*tokenDetails, error) {
 	}
 
 	return &tokenDetails{
-		accessToken:        accessTokenValue,
+		accessTokenValue:   accessTokenValue,
 		accessTokenUuid:    accessTokenUuid,
 		accessTokenExpiry:  auth.config.accessTokenExpiry,
-		refreshToken:       refreshTokenValue,
+		refreshTokenValue:  refreshTokenValue,
 		refreshTokenUuid:   refreshTokenUuid,
 		refreshTokenExpiry: auth.config.refreshTokenExpiry,
 	}, nil
