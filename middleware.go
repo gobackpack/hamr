@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/casbin/casbin/v2"
 	gormadapter "github.com/casbin/gorm-adapter/v3"
-	"github.com/sirupsen/logrus"
 	"net/http"
 	"strconv"
 	"strings"
@@ -61,13 +60,11 @@ func (auth *auth) authorize(obj, act string, adapter *gormadapter.Adapter, w htt
 func enforce(sub string, obj string, act string, adapter *gormadapter.Adapter) (bool, error) {
 	enforcer, err := casbin.NewEnforcer(*Path+"casbin_model.conf", adapter)
 	if err != nil {
-		logrus.Error("failed to create casbin enforcer: ", err)
 		return false, fmt.Errorf("failed to create casbin enforcer: %s", err)
 	}
 
 	err = enforcer.LoadPolicy()
 	if err != nil {
-		logrus.Error("failed to load casbin policy from database: ", err)
 		return false, fmt.Errorf("failed to load casbin policy from database: %s", err)
 	}
 
