@@ -36,8 +36,8 @@ func main() {
 	router := hamr.NewGinRouter()
 
 	conf := hamr.NewConfig(db)
-	conf.Router = router
 	auth := hamr.New(conf)
+	auth.MapAuthRoutesGin(router)
 
 	accountConfirmation := hamr.NewAccountConfirmation(
 		"smtp.gmail.com",
@@ -51,7 +51,7 @@ func main() {
 	accountConfirmation.Body = "Confirm clicking on the link: "
 	accountConfirmation.LinkText = "Here"
 
-	auth.SetAccountConfirmation(accountConfirmation)
+	auth.MapAccountConfirmationRoutesGin(router, accountConfirmation)
 
 	// can be used to update other user fields during registration flow
 	auth.PostRegisterCallback = func(user *hamr.User, requestData map[string]interface{}) error {

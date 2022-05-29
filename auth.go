@@ -5,12 +5,16 @@ import (
 	"errors"
 	"flag"
 	gormadapter "github.com/casbin/gorm-adapter/v3"
-	"github.com/gin-gonic/gin"
 	"github.com/gobackpack/hamr/internal/cache"
+	"github.com/gobackpack/hamr/internal/httpserver"
+	"github.com/gobackpack/hamr/oauth"
 	"github.com/gobackpack/jwt"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 	"gorm.io/gorm"
+	"net/http"
+	"strings"
 	"time"
 )
 
@@ -33,7 +37,6 @@ type Config struct {
 	Host             string
 	Port             string
 	RouteGroup       string
-	Router           *gin.Engine
 	Db               *gorm.DB
 	CacheStorage     cache.Storage
 	EnableLocalLogin bool
@@ -65,6 +68,95 @@ type tokenClaims map[string]interface{}
 
 // authTokens contains pair of access_token and refresh_token after authentication. These token pairs are returned to the user
 type authTokens map[string]string
+
+// New will initialize *auth api
+func New(config *Config) *auth {
+	config.accessTokenSecret = []byte(viper.GetString("auth.access_token.secret"))
+	config.accessTokenExpiry = time.Minute * time.Duration(viper.GetInt("auth.access_token.expiry"))
+	config.refreshTokenSecret = []byte(viper.GetString("auth.refresh_token.secret"))
+	config.refreshTokenExpiry = time.Minute * time.Duration(viper.GetInt("auth.refresh_token.expiry"))
+	config.Host = strings.Trim(config.Host, "/")
+	config.RouteGroup = strings.Trim(config.RouteGroup, "/")
+	config.basePath = config.Scheme + "://" + config.Host + ":" + config.Port
+	config.fullPath = config.basePath + "/" + config.RouteGroup
+
+	adapter, err := gormadapter.NewAdapterByDB(config.Db)
+	if err != nil {
+		logrus.Fatal("failed to initialize casbin adapter: ", err)
+	}
+
+	config.casbinAdapter = adapter
+
+	hamrAuth := &auth{
+		config: config,
+	}
+
+	hamrAuth.runMigrations()
+	seedCasbinPolicy(config.Db)
+
+	return hamrAuth
+}
+
+func NewConfig(db *gorm.DB) *Config {
+	return &Config{
+		Scheme:     "http",
+		Host:       "localhost",
+		Port:       "8080",
+		RouteGroup: "/api/auth",
+		Db:         db,
+		CacheStorage: NewRedisCacheStorage(
+			viper.GetString("auth.cache.redis.host"),
+			viper.GetString("auth.cache.redis.port"),
+			viper.GetString("auth.cache.redis.password"),
+			viper.GetInt("auth.cache.db")),
+		EnableLocalLogin: true,
+	}
+}
+
+// ServeHttp will start http server
+func ServeHttp(addr string, router http.Handler) {
+	httpserver.ServeHttp(addr, router)
+}
+
+// InitializeViper default settings. Config path, type...
+func InitializeViper() {
+	viper.AddConfigPath(*Path)
+	viper.SetConfigName("app")
+	viper.AutomaticEnv()
+	viper.SetConfigType("yml")
+
+	if err := viper.ReadInConfig(); err != nil {
+		logrus.Fatal("viper failed to read config file: ", err)
+	}
+}
+
+// RegisterProvider will append oauth.SupportedProviders with passed Provider.
+// Name must match settings in /config/app.yml
+func (auth *auth) RegisterProvider(name string, provider oauth.Provider) {
+	oauth.SupportedProviders[name] = provider
+}
+
+// CasbinAdapter will return initialized Casbin adapter. Required for protection with Casbin policies
+func (auth *auth) CasbinAdapter() *gormadapter.Adapter {
+	return auth.config.casbinAdapter
+}
+
+// JSON response
+func JSON(statusCode int, w http.ResponseWriter, data interface{}) {
+	resp, err := json.Marshal(data)
+	if err != nil {
+		logrus.Error(err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+
+	if _, err = w.Write(resp); err != nil {
+		logrus.Error(err)
+		return
+	}
+}
 
 // createSession will create *User login session. Generate access and refresh tokens and save both tokens in cache storage
 func (auth *auth) createSession(claims tokenClaims) (authTokens, error) {
@@ -195,6 +287,14 @@ func (auth *auth) getTokenFromCache(tokenUuid string) (map[string]interface{}, e
 	return cachedToken, nil
 }
 
+// runMigrations will automatically run migrations, TODO: from /migrations/
+func (auth *auth) runMigrations() {
+	err := auth.config.Db.AutoMigrate(&User{})
+	if err != nil {
+		logrus.Fatal("migrations failed: ", err)
+	}
+}
+
 // validateClaims will check for required *tokenClaims
 func validateClaims(claims tokenClaims) error {
 	_, ok := claims["sub"]
@@ -250,4 +350,22 @@ func generateAuthClaims(sub uint, email string) tokenClaims {
 	claims["email"] = email
 
 	return claims
+}
+
+// getAccessTokenFromRequest will extract access token from request's Authorization headers.
+// Returns schema and access_token.
+func getAccessTokenFromRequest(w http.ResponseWriter, r *http.Request) (string, string) {
+	authHeader := strings.Split(r.Header.Get("Authorization"), " ")
+	if len(authHeader) != 2 {
+		JSON(http.StatusUnauthorized, w, "")
+		return "", ""
+	}
+
+	schema, token := authHeader[0], authHeader[1]
+	if schema != "Bearer" {
+		JSON(http.StatusUnauthorized, w, "")
+		return "", ""
+	}
+
+	return schema, token
 }
