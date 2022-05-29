@@ -35,8 +35,7 @@ func main() {
 
 	router := hamr.NewGinRouter()
 
-	conf := hamr.NewConfig(db)
-	auth := hamr.New(conf)
+	auth := hamr.New(hamr.NewConfig(db))
 	auth.MapAuthRoutesGin(router)
 
 	accountConfirmation := hamr.NewAccountConfirmation(

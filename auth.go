@@ -113,11 +113,6 @@ func NewConfig(db *gorm.DB) *Config {
 	}
 }
 
-// ServeHttp will start http server
-func ServeHttp(addr string, router http.Handler) {
-	httpserver.ServeHttp(addr, router)
-}
-
 // InitializeViper default settings. Config path, type...
 func InitializeViper() {
 	viper.AddConfigPath(*Path)
@@ -139,6 +134,11 @@ func (auth *auth) RegisterProvider(name string, provider oauth.Provider) {
 // CasbinAdapter will return initialized Casbin adapter. Required for protection with Casbin policies
 func (auth *auth) CasbinAdapter() *gormadapter.Adapter {
 	return auth.config.casbinAdapter
+}
+
+// ServeHttp will start http server
+func ServeHttp(addr string, router http.Handler) {
+	httpserver.ServeHttp(addr, router)
 }
 
 // JSON response

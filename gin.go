@@ -9,7 +9,7 @@ import (
 )
 
 /*
-Framework specific
+Framework specific: Gin
 */
 
 func NewGinRouter() *gin.Engine {
