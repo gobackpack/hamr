@@ -14,12 +14,7 @@ import (
 // authorize middleware will check if request is authorized.
 // If adapter is passed Casbin policy will be checked as well
 // TODO: removing Gin dependency in progress
-func (auth *auth) authorize(
-	obj, act string,
-	adapter *gormadapter.Adapter,
-	w http.ResponseWriter,
-	r *http.Request) (bool, error) {
-
+func (auth *auth) authorize(obj, act string, adapter *gormadapter.Adapter, w http.ResponseWriter, r *http.Request) (bool, error) {
 	_, token := getAccessTokenFromRequest(w, r)
 	if strings.TrimSpace(token) == "" {
 		return false, errors.New("token not found")
