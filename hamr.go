@@ -11,7 +11,6 @@ import (
 	"github.com/spf13/viper"
 	"gorm.io/gorm"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -178,7 +177,7 @@ func (auth *auth) initializeRoutes() {
 	r.GET(":provider/callback", func(c *gin.Context) {
 		auth.oauthLoginCallbackHandler(c.Param("provider"), c.Writer, c.Request)
 	})
-	r.POST("logout", auth.GinAuthMiddleware("", "", nil), func(c *gin.Context) {
+	r.POST("logout", auth.AuthorizeGinRequest("", "", nil), func(c *gin.Context) {
 		auth.logoutHandler(c.Writer, c.Request)
 	})
 	r.POST("token/refresh", func(c *gin.Context) {
@@ -195,59 +194,11 @@ func (auth *auth) initializeRoutes() {
 	}
 }
 
-func (auth *auth) GinAuthMiddleware(obj, act string, adapter *gormadapter.Adapter) gin.HandlerFunc {
+func (auth *auth) AuthorizeGinRequest(obj, act string, adapter *gormadapter.Adapter) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		_, token := getAccessTokenFromRequest(ctx.Writer, ctx.Request)
-		if strings.TrimSpace(token) == "" {
-			logrus.Error("token not found")
+		if authorized, err := auth.authorize(obj, act, adapter, ctx.Writer, ctx.Request); !authorized || err != nil {
+			logrus.Error(err)
 			ctx.AbortWithStatus(http.StatusUnauthorized)
-			return
-		}
-
-		claims, valid := auth.extractAccessTokenClaims(token)
-		if claims == nil || !valid {
-			logrus.Error("invalid access token claims, valid: ", valid)
-			ctx.AbortWithStatus(http.StatusUnauthorized)
-			return
-		}
-
-		userIdFromRequestClaims := claims["sub"]
-		accessTokenUuid := claims["uuid"]
-		if userIdFromRequestClaims == nil || accessTokenUuid == nil {
-			logrus.Error("userId or accessTokenUuid is nil")
-			ctx.AbortWithStatus(http.StatusUnauthorized)
-			return
-		}
-
-		accessTokenCached, err := auth.getTokenFromCache(accessTokenUuid.(string))
-		if err != nil {
-			logrus.Error("failed to get access token from cache: ", err)
-			ctx.AbortWithStatus(http.StatusUnauthorized)
-			return
-		}
-
-		userIdFromCacheClaims, ok := accessTokenCached["sub"]
-		if !ok {
-			logrus.Error("sub not found in accessTokenCached")
-			ctx.AbortWithStatus(http.StatusUnauthorized)
-			return
-		}
-
-		if userIdFromRequestClaims.(float64) != userIdFromCacheClaims.(float64) {
-			logrus.Error("userIdFromRequestClaims does not match userIdFromCacheClaims")
-			ctx.AbortWithStatus(http.StatusUnauthorized)
-			return
-		}
-
-		if adapter != nil {
-			id := strconv.Itoa(int(userIdFromRequestClaims.(float64)))
-
-			// enforce Casbin policy
-			if policyOk, policyErr := enforce(id, obj, act, adapter); policyErr != nil || !policyOk {
-				logrus.Error("casbin policy not passed, err: ", policyErr)
-				ctx.AbortWithStatus(http.StatusUnauthorized)
-				return
-			}
 		}
 
 		ctx.Next()

@@ -33,8 +33,10 @@ func main() {
 		logrus.Fatal(err)
 	}
 
+	router := hamr.NewGinRouter()
+
 	conf := hamr.NewConfig(db)
-	conf.Router = hamr.NewGinRouter()
+	conf.Router = router
 	auth := hamr.New(conf)
 
 	accountConfirmation := hamr.NewAccountConfirmation(
@@ -89,15 +91,13 @@ func main() {
 	// name property must match value from config/app.yml -> provider.github, provider.google...
 	auth.RegisterProvider("github", provider.NewCustomGithub())
 
-	router := conf.Router
-
 	// example #1: protected without roles/policy
-	router.GET("protected", auth.GinAuthMiddleware("", "", nil), func(ctx *gin.Context) {
+	router.GET("protected", auth.AuthorizeGinRequest("", "", nil), func(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, "protected")
 	})
 
 	// example #2: protected with roles/policy
-	router.GET("protected/policy", auth.GinAuthMiddleware("usr", "read", auth.CasbinAdapter()), func(ctx *gin.Context) {
+	router.GET("protected/policy", auth.AuthorizeGinRequest("usr", "read", auth.CasbinAdapter()), func(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, "policy protected")
 	})
 
