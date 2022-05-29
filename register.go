@@ -1,8 +1,8 @@
 package hamr
 
 import (
+	"encoding/json"
 	"errors"
-	"github.com/gin-gonic/gin"
 	"github.com/gobackpack/crypto"
 	"github.com/sirupsen/logrus"
 	"net/http"
@@ -13,16 +13,18 @@ User registration module.
 */
 
 // registerHandler maps to register route
-func (auth *auth) registerHandler(ctx *gin.Context) {
-	var requestData map[string]interface{}
-	if err := ctx.ShouldBind(&requestData); err != nil {
-		logrus.Errorf("request data binding failed: %v", err)
-		ctx.JSON(http.StatusUnprocessableEntity, "invalid request data")
+func (auth *auth) registerHandler(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+
+	var req loginRequest
+	if err := decoder.Decode(&req); err != nil {
+		JSON(http.StatusUnprocessableEntity, w, err.Error())
 		return
 	}
 
+	var requestData map[string]interface{}
 	if err := validateRequestData(requestData); err != nil {
-		ctx.JSON(http.StatusUnprocessableEntity, err.Error())
+		JSON(http.StatusUnprocessableEntity, w, err.Error())
 		return
 	}
 
@@ -32,11 +34,11 @@ func (auth *auth) registerHandler(ctx *gin.Context) {
 		Password: requestData["password"].(string),
 	}, requestData)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, err.Error())
+		JSON(http.StatusBadRequest, w, err.Error())
 		return
 	}
 
-	ctx.JSON(http.StatusOK, user)
+	JSON(http.StatusOK, w, user)
 }
 
 // registerUser will save user into database

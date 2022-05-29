@@ -11,8 +11,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
-	"net/http"
-	"strings"
 	"time"
 )
 
@@ -252,22 +250,4 @@ func generateAuthClaims(sub uint, email string) tokenClaims {
 	claims["email"] = email
 
 	return claims
-}
-
-// getAccessTokenFromRequest will extract access token from request's Authorization headers.
-// Returns schema and access_token.
-func getAccessTokenFromRequest(ctx *gin.Context) (string, string) {
-	authHeader := strings.Split(ctx.GetHeader("Authorization"), " ")
-	if len(authHeader) != 2 {
-		ctx.AbortWithStatus(http.StatusUnauthorized)
-		return "", ""
-	}
-
-	schema, token := authHeader[0], authHeader[1]
-	if schema != "Bearer" {
-		ctx.AbortWithStatus(http.StatusUnauthorized)
-		return "", ""
-	}
-
-	return schema, token
 }

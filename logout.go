@@ -1,7 +1,6 @@
 package hamr
 
 import (
-	"github.com/gin-gonic/gin"
 	"net/http"
 )
 
@@ -10,11 +9,11 @@ Logout module.
 */
 
 // logoutHandler maps to log out route
-func (auth *auth) logoutHandler(ctx *gin.Context) {
-	_, accessToken := getAccessTokenFromRequest(ctx)
+func (auth *auth) logoutHandler(w http.ResponseWriter, r *http.Request) {
+	_, accessToken := getAccessTokenFromRequest(w, r)
 
 	if err := auth.destroySession(accessToken); err != nil {
-		ctx.JSON(http.StatusBadRequest, err.Error())
+		JSON(http.StatusBadRequest, w, err.Error())
 		return
 	}
 }

@@ -1,8 +1,8 @@
 package hamr
 
 import (
+	"encoding/json"
 	"errors"
-	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 	"net/http"
 )
@@ -12,25 +12,28 @@ Refresh token module.
 */
 
 // refreshTokenHandler maps to refresh token route
-func (auth *auth) refreshTokenHandler(ctx *gin.Context) {
+func (auth *auth) refreshTokenHandler(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
 	refreshTokenRequest := map[string]string{}
-	if err := ctx.ShouldBindJSON(&refreshTokenRequest); err != nil {
-		ctx.JSON(http.StatusUnprocessableEntity, err.Error())
+
+	if err := decoder.Decode(&refreshTokenRequest); err != nil {
+		JSON(http.StatusUnprocessableEntity, w, err.Error())
 		return
 	}
+
 	refreshToken, ok := refreshTokenRequest["refresh_token"]
 	if !ok {
-		ctx.JSON(http.StatusUnprocessableEntity, "refresh token failed, invalid data: missing refresh_token")
+		JSON(http.StatusUnprocessableEntity, w, "refresh token failed, invalid data: missing refresh_token")
 		return
 	}
 
 	tokens, err := auth.refreshToken(refreshToken)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, err.Error())
+		JSON(http.StatusBadRequest, w, err.Error())
 		return
 	}
 
-	ctx.JSON(http.StatusOK, tokens)
+	JSON(http.StatusOK, w, tokens)
 }
 
 // refreshToken will generate new pair of access and refresh tokens. Remove old access and refresh tokens from cache
@@ -71,7 +74,7 @@ func (auth *auth) refreshToken(refreshToken string) (authTokens, error) {
 	}
 
 	// generate new access token and refresh token
-	claims := generateAuthClaims(refreshTokenUserId.(uint), refreshTokenUserEmail.(string))
+	claims := generateAuthClaims(uint(refreshTokenUserId.(float64)), refreshTokenUserEmail.(string))
 
 	tokens, err := auth.createSession(claims)
 	if err != nil {

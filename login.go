@@ -1,9 +1,9 @@
 package hamr
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"github.com/gobackpack/crypto"
 	"github.com/gobackpack/hamr/oauth"
 	"github.com/gobackpack/hamr/oauth/models"
@@ -23,58 +23,56 @@ type loginRequest struct {
 }
 
 // loginHandler maps to local (email + pwd) login route
-func (auth *auth) loginHandler(ctx *gin.Context) {
-	var req *loginRequest
-	if err := ctx.ShouldBind(&req); err != nil {
-		ctx.JSON(http.StatusUnprocessableEntity, err.Error())
+func (auth *auth) loginHandler(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+
+	var req loginRequest
+	if err := decoder.Decode(&req); err != nil {
+		JSON(http.StatusUnprocessableEntity, w, err.Error())
 		return
 	}
 
 	tokens, err := auth.authenticate(req.Email, req.Password)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, err.Error())
+		JSON(http.StatusBadRequest, w, err.Error())
 		return
 	}
 
-	ctx.JSON(http.StatusOK, tokens)
+	JSON(http.StatusOK, w, tokens)
 }
 
 // oauthLoginHandler maps to :provider login route. Redirects to :provider oAuth login url
-func (auth *auth) oauthLoginHandler(ctx *gin.Context) {
-	provider := ctx.Param("provider")
-
-	authenticator, err := oauth.NewAuthenticator(provider, auth.config.fullPath, ctx)
+func (auth *auth) oauthLoginHandler(provider string, w http.ResponseWriter, r *http.Request) {
+	authenticator, err := oauth.NewAuthenticator(provider, auth.config.fullPath)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, err.Error())
+		JSON(http.StatusBadRequest, w, err.Error())
 		return
 	}
 
-	authenticator.RedirectToLoginUrl()
+	authenticator.RedirectToLoginUrl(w, r)
 }
 
 // oauthLoginCallbackHandler maps to :provider login callback route. After login :provider redirects to this route
-func (auth *auth) oauthLoginCallbackHandler(ctx *gin.Context) {
-	provider := ctx.Param("provider")
-
-	authenticator, err := oauth.NewAuthenticator(provider, auth.config.fullPath, ctx)
+func (auth *auth) oauthLoginCallbackHandler(provider string, w http.ResponseWriter, r *http.Request) {
+	authenticator, err := oauth.NewAuthenticator(provider, auth.config.fullPath)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, err.Error())
+		JSON(http.StatusBadRequest, w, err.Error())
 		return
 	}
 
-	userInfo, err := authenticator.GetUserInfo()
+	userInfo, err := authenticator.GetUserInfo(w, r)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, err.Error())
+		JSON(http.StatusBadRequest, w, err.Error())
 		return
 	}
 
 	tokens, err := auth.authenticateWithOAuth(userInfo, provider)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, err.Error())
+		JSON(http.StatusBadRequest, w, err.Error())
 		return
 	}
 
-	ctx.JSON(http.StatusOK, tokens)
+	JSON(http.StatusOK, w, tokens)
 }
 
 // authenticate will login user with local login (email + pwd), validate credentials and save tokens in cache

@@ -1,8 +1,8 @@
 package hamr
 
 import (
+	"encoding/json"
 	"errors"
-	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"net/http"
@@ -72,46 +72,47 @@ func (accountConfirmation *accountConfirmation) sendConfirmationEmail(registered
 }
 
 // confirmAccountHandler maps to account confirmation route
-func (auth *auth) confirmAccountHandler(ctx *gin.Context) {
-	token := ctx.Query("token")
+func (auth *auth) confirmAccountHandler(w http.ResponseWriter, r *http.Request) {
+	token := r.URL.Query().Get("token")
 
 	if strings.TrimSpace(token) == "" {
 		logrus.Error("account confirmation failed: missing token from request")
-		ctx.JSON(http.StatusBadRequest, "account confirmation failed")
+		JSON(http.StatusBadRequest, w, "account confirmation failed")
 		return
 	}
 
 	if err := auth.confirmAccount(token); err != nil {
-		ctx.JSON(http.StatusBadRequest, err.Error())
+		JSON(http.StatusBadRequest, w, err.Error())
 		return
 	}
 
-	ctx.Redirect(http.StatusTemporaryRedirect, auth.config.basePath)
+	http.Redirect(w, r, auth.config.basePath, http.StatusTemporaryRedirect)
 }
 
 // resendAccountConfirmationEmailHandler maps to resend account confirmation email route
-func (auth *auth) resendAccountConfirmationEmailHandler(ctx *gin.Context) {
+func (auth *auth) resendAccountConfirmationEmailHandler(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
 	requestData := &resendConfirmationRequest{}
-	if err := ctx.ShouldBind(&requestData); err != nil {
-		logrus.Errorf("request data binding failed: %v", err)
-		ctx.JSON(http.StatusUnprocessableEntity, "invalid request data")
+
+	if err := decoder.Decode(&requestData); err != nil {
+		JSON(http.StatusUnprocessableEntity, w, "invalid request data")
 		return
 	}
 
 	user := auth.getUserByEmail(requestData.Email)
 	if user == nil {
-		ctx.JSON(http.StatusBadRequest, "user not found")
+		JSON(http.StatusBadRequest, w, "user not found")
 		return
 	}
 
 	if auth.config.accountConfirmation != nil && !user.Confirmed {
 		if err := auth.beginConfirmation(user); err != nil {
 			logrus.Errorf("account confirmation failed: %v", err)
-			ctx.JSON(http.StatusBadRequest, "account confirmation failed")
+			JSON(http.StatusBadRequest, w, "account confirmation failed")
 			return
 		}
 
-		ctx.Redirect(http.StatusTemporaryRedirect, auth.config.basePath)
+		http.Redirect(w, r, auth.config.basePath, http.StatusTemporaryRedirect)
 	}
 }
 

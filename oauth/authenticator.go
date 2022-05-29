@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
-	"github.com/gin-gonic/gin"
 	"github.com/gobackpack/hamr/oauth/models"
 	"github.com/gobackpack/hamr/oauth/providers"
 	"github.com/sirupsen/logrus"
@@ -28,7 +27,6 @@ var SupportedProviders = map[string]Provider{
 // authenticator is responsible for oauth logins, oAuth2 configuration setup
 type authenticator struct {
 	provider Provider
-	ctx      *gin.Context
 	config   *oauth2.Config
 }
 
@@ -40,7 +38,7 @@ type Provider interface {
 }
 
 // NewAuthenticator will setup *authenticator, oAuth2 configuration
-func NewAuthenticator(provider, fullPath string, ctx *gin.Context) (*authenticator, error) {
+func NewAuthenticator(provider, fullPath string) (*authenticator, error) {
 	providerInstance, ok := SupportedProviders[provider]
 	if !ok || providerInstance == nil {
 		return nil, errors.New("unsupported provider: " + provider)
@@ -48,7 +46,6 @@ func NewAuthenticator(provider, fullPath string, ctx *gin.Context) (*authenticat
 
 	auth := &authenticator{
 		provider: providerInstance,
-		ctx:      ctx,
 		config: &oauth2.Config{
 			ClientID:     viper.GetString("auth.provider." + provider + ".client_id"),
 			ClientSecret: viper.GetString("auth.provider." + provider + ".client_secret"),
@@ -62,8 +59,8 @@ func NewAuthenticator(provider, fullPath string, ctx *gin.Context) (*authenticat
 }
 
 // RedirectToLoginUrl will redirect to oauth provider login url
-func (auth *authenticator) RedirectToLoginUrl() {
-	oAuthState, err := auth.setLoginAntiForgeryCookie()
+func (auth *authenticator) RedirectToLoginUrl(w http.ResponseWriter, r *http.Request) {
+	oAuthState, err := auth.setLoginAntiForgeryCookie(w, r)
 	if err != nil {
 		logrus.Error("failed to generate CSRF token")
 		return
@@ -71,12 +68,12 @@ func (auth *authenticator) RedirectToLoginUrl() {
 
 	oAuthLoginUrl := auth.config.AuthCodeURL(oAuthState)
 
-	http.Redirect(auth.ctx.Writer, auth.ctx.Request, oAuthLoginUrl, http.StatusTemporaryRedirect)
+	http.Redirect(w, r, oAuthLoginUrl, http.StatusTemporaryRedirect)
 }
 
 // GetUserInfo from oauth provider
-func (auth *authenticator) GetUserInfo() (*models.UserInfo, error) {
-	token, err := auth.exchangeCodeForToken()
+func (auth *authenticator) GetUserInfo(w http.ResponseWriter, r *http.Request) (*models.UserInfo, error) {
+	token, err := auth.exchangeCodeForToken(w, r)
 	if err != nil {
 		logrus.Errorf("failed to exchange code for token: %v", err)
 		return nil, errors.New("failed to get token from oauth provider")
@@ -92,10 +89,10 @@ func (auth *authenticator) GetUserInfo() (*models.UserInfo, error) {
 }
 
 // exchangeCodeForToken will validate state and exchange code for oauth token
-func (auth *authenticator) exchangeCodeForToken() (*oauth2.Token, error) {
-	oAuthStateSaved, oAuthStateErr := auth.ctx.Request.Cookie(oAuthLoginAntiForgeryKey)
-	oAuthState := auth.ctx.Request.FormValue("state")
-	oAuthStateCode := auth.ctx.Request.FormValue("code")
+func (auth *authenticator) exchangeCodeForToken(w http.ResponseWriter, r *http.Request) (*oauth2.Token, error) {
+	oAuthStateSaved, oAuthStateErr := r.Cookie(oAuthLoginAntiForgeryKey)
+	oAuthState := r.FormValue("state")
+	oAuthStateCode := r.FormValue("code")
 
 	if oAuthStateErr != nil || oAuthState == "" {
 		return nil, errors.New("invalid oAuthStateSaved/oAuthState")
@@ -115,7 +112,7 @@ func (auth *authenticator) exchangeCodeForToken() (*oauth2.Token, error) {
 
 // setLoginAntiForgeryCookie will generate random state string and save it in cookies.
 // CSRF protection
-func (auth *authenticator) setLoginAntiForgeryCookie() (string, error) {
+func (auth *authenticator) setLoginAntiForgeryCookie(w http.ResponseWriter, r *http.Request) (string, error) {
 	b := make([]byte, 16)
 	_, err := rand.Read(b)
 	if err != nil {
@@ -126,7 +123,7 @@ func (auth *authenticator) setLoginAntiForgeryCookie() (string, error) {
 	var expiration = time.Now().Add(time.Minute * time.Duration(viper.GetInt("auth.state_expiry")))
 
 	cookie := http.Cookie{Name: oAuthLoginAntiForgeryKey, Value: state, Expires: expiration}
-	http.SetCookie(auth.ctx.Writer, &cookie)
+	http.SetCookie(w, &cookie)
 
 	return state, nil
 }

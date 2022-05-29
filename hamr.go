@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/viper"
 	"gorm.io/gorm"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -55,7 +56,6 @@ func NewConfig(db *gorm.DB) *Config {
 		Host:       "localhost",
 		Port:       "8080",
 		RouteGroup: "/api/auth",
-		Router:     NewRouter(),
 		Db:         db,
 		CacheStorage: NewRedisCacheStorage(
 			viper.GetString("auth.cache.redis.host"),
@@ -66,19 +66,8 @@ func NewConfig(db *gorm.DB) *Config {
 	}
 }
 
-// NewRouter will return new gin router
-func NewRouter() *gin.Engine {
-	router := gin.New()
-
-	router.Use(cors.Default())
-	router.Use(gin.Logger())
-	router.Use(gin.Recovery())
-
-	return router
-}
-
 // ServeHttp will start http server
-func ServeHttp(addr string, router *gin.Engine) {
+func ServeHttp(addr string, router http.Handler) {
 	httpserver.ServeHttp(addr, router)
 }
 
@@ -100,52 +89,9 @@ func (auth *auth) RegisterProvider(name string, provider oauth.Provider) {
 	oauth.SupportedProviders[name] = provider
 }
 
-// AuthorizeRequest is middleware to protect endpoints
-func (auth *auth) AuthorizeRequest(obj string, act string, adapter *gormadapter.Adapter) gin.HandlerFunc {
-	return auth.authorize(obj, act, adapter)
-}
-
 // CasbinAdapter will return initialized Casbin adapter. Required for protection with Casbin policies
 func (auth *auth) CasbinAdapter() *gormadapter.Adapter {
 	return auth.config.casbinAdapter
-}
-
-// Router will return router assigned on *auth initialization
-func (auth *auth) Router() *gin.Engine {
-	return auth.config.Router
-}
-
-// SetAccountConfirmation api
-func (auth *auth) SetAccountConfirmation(accountConfirmation *accountConfirmation) {
-	accountConfirmation.fullPath = auth.config.fullPath
-	auth.config.accountConfirmation = accountConfirmation
-
-	r := auth.config.Router.Group(auth.config.RouteGroup)
-	r.GET("confirm", auth.confirmAccountHandler)
-	r.POST("confirm/resend", auth.resendAccountConfirmationEmailHandler)
-}
-
-// initializeRoutes will map all auth routes with respective handlers
-func (auth *auth) initializeRoutes() {
-	r := auth.config.Router.Group(auth.config.RouteGroup)
-
-	r.GET(":provider/login", auth.oauthLoginHandler)
-	r.GET(":provider/callback", auth.oauthLoginCallbackHandler)
-	r.POST("logout", auth.AuthorizeRequest("", "", nil), auth.logoutHandler)
-	r.POST("token/refresh", auth.refreshTokenHandler)
-
-	if auth.config.EnableLocalLogin {
-		r.POST("register", auth.registerHandler)
-		r.POST("login", auth.loginHandler)
-	}
-}
-
-// runMigrations will automatically run migrations from /migrations/
-func (auth *auth) runMigrations() {
-	err := auth.config.Db.AutoMigrate(&User{})
-	if err != nil {
-		logrus.Fatal("migrations failed: ", err)
-	}
 }
 
 // JSON response
@@ -162,5 +108,148 @@ func JSON(statusCode int, w http.ResponseWriter, data interface{}) {
 	if _, err = w.Write(resp); err != nil {
 		logrus.Error(err)
 		return
+	}
+}
+
+// runMigrations will automatically run migrations, TODO: from /migrations/
+func (auth *auth) runMigrations() {
+	err := auth.config.Db.AutoMigrate(&User{})
+	if err != nil {
+		logrus.Fatal("migrations failed: ", err)
+	}
+}
+
+// getAccessTokenFromRequest will extract access token from request's Authorization headers.
+// Returns schema and access_token.
+func getAccessTokenFromRequest(w http.ResponseWriter, r *http.Request) (string, string) {
+	authHeader := strings.Split(r.Header.Get("Authorization"), " ")
+	if len(authHeader) != 2 {
+		JSON(http.StatusUnauthorized, w, "")
+		return "", ""
+	}
+
+	schema, token := authHeader[0], authHeader[1]
+	if schema != "Bearer" {
+		JSON(http.StatusUnauthorized, w, "")
+		return "", ""
+	}
+
+	return schema, token
+}
+
+/*
+Frameworks specific
+*/
+
+// NewGinRouter will return new gin router
+func NewGinRouter() *gin.Engine {
+	router := gin.New()
+
+	router.Use(cors.Default())
+	router.Use(gin.Logger())
+	router.Use(gin.Recovery())
+
+	return router
+}
+
+// SetAccountConfirmation api
+func (auth *auth) SetAccountConfirmation(accountConfirmation *accountConfirmation) {
+	accountConfirmation.fullPath = auth.config.fullPath
+	auth.config.accountConfirmation = accountConfirmation
+
+	r := auth.config.Router.Group(auth.config.RouteGroup)
+
+	r.Handle(http.MethodGet, "confirm/", func(c *gin.Context) {
+		auth.confirmAccountHandler(c.Writer, c.Request)
+	})
+
+	r.Handle(http.MethodPost, "confirm/resend", func(c *gin.Context) {
+		auth.resendAccountConfirmationEmailHandler(c.Writer, c.Request)
+	})
+}
+
+// initializeRoutes will map all auth routes with respective handlers
+func (auth *auth) initializeRoutes() {
+	r := auth.config.Router.Group(auth.config.RouteGroup)
+
+	r.GET(":provider/login", func(c *gin.Context) {
+		auth.oauthLoginHandler(c.Param("provider"), c.Writer, c.Request)
+	})
+	r.GET(":provider/callback", func(c *gin.Context) {
+		auth.oauthLoginCallbackHandler(c.Param("provider"), c.Writer, c.Request)
+	})
+	r.POST("logout", auth.GinAuthMiddleware("", "", nil), func(c *gin.Context) {
+		auth.logoutHandler(c.Writer, c.Request)
+	})
+	r.POST("token/refresh", func(c *gin.Context) {
+		auth.refreshTokenHandler(c.Writer, c.Request)
+	})
+
+	if auth.config.EnableLocalLogin {
+		r.POST("register", func(c *gin.Context) {
+			auth.registerHandler(c.Writer, c.Request)
+		})
+		r.POST("login", func(c *gin.Context) {
+			auth.loginHandler(c.Writer, c.Request)
+		})
+	}
+}
+
+func (auth *auth) GinAuthMiddleware(obj, act string, adapter *gormadapter.Adapter) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		_, token := getAccessTokenFromRequest(ctx.Writer, ctx.Request)
+		if strings.TrimSpace(token) == "" {
+			logrus.Error("token not found")
+			ctx.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+
+		claims, valid := auth.extractAccessTokenClaims(token)
+		if claims == nil || !valid {
+			logrus.Error("invalid access token claims, valid: ", valid)
+			ctx.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+
+		userIdFromRequestClaims := claims["sub"]
+		accessTokenUuid := claims["uuid"]
+		if userIdFromRequestClaims == nil || accessTokenUuid == nil {
+			logrus.Error("userId or accessTokenUuid is nil")
+			ctx.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+
+		accessTokenCached, err := auth.getTokenFromCache(accessTokenUuid.(string))
+		if err != nil {
+			logrus.Error("failed to get access token from cache: ", err)
+			ctx.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+
+		userIdFromCacheClaims, ok := accessTokenCached["sub"]
+		if !ok {
+			logrus.Error("sub not found in accessTokenCached")
+			ctx.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+
+		if userIdFromRequestClaims.(float64) != userIdFromCacheClaims.(float64) {
+			logrus.Error("userIdFromRequestClaims does not match userIdFromCacheClaims")
+			ctx.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+
+		if adapter != nil {
+			id := strconv.Itoa(int(userIdFromRequestClaims.(float64)))
+
+			// enforce Casbin policy
+			if policyOk, policyErr := enforce(id, obj, act, adapter); policyErr != nil || !policyOk {
+				logrus.Error("casbin policy not passed, err: ", policyErr)
+				ctx.AbortWithStatus(http.StatusUnauthorized)
+				return
+			}
+		}
+
+		ctx.Next()
 	}
 }
