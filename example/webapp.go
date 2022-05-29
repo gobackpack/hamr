@@ -28,27 +28,12 @@ func main() {
 
 	hamr.InitializeViper()
 
-	router := hamr.NewRouter()
-
 	db, err := hamr.PostgresDb(viper.GetString("database.connstring"))
 	if err != nil {
 		logrus.Fatal(err)
 	}
 
-	auth := hamr.New(&hamr.Config{
-		Scheme:     "http",
-		Host:       "localhost",
-		Port:       "8080",
-		RouteGroup: "/api/auth",
-		Router:     router,
-		Db:         db,
-		CacheStorage: hamr.NewRedisCacheStorage(
-			viper.GetString("auth.cache.redis.host"),
-			viper.GetString("auth.cache.redis.port"),
-			viper.GetString("auth.cache.redis.password"),
-			viper.GetInt("auth.cache.db")),
-		EnableLocalLogin: true,
-	})
+	auth := hamr.New(hamr.NewConfig(db))
 
 	accountConfirmation := hamr.NewAccountConfirmation(
 		"smtp.gmail.com",
@@ -101,6 +86,8 @@ func main() {
 	// register custom provider
 	// name property must match value from config/app.yml -> provider.github, provider.google...
 	auth.RegisterProvider("github", provider.NewCustomGithub())
+
+	router := auth.Router()
 
 	// example #1: protected without roles/policy
 	router.GET("protected", auth.AuthorizeRequest("", "", nil), func(ctx *gin.Context) {

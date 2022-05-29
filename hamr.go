@@ -1,6 +1,7 @@
 package hamr
 
 import (
+	"encoding/json"
 	gormadapter "github.com/casbin/gorm-adapter/v3"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -8,6 +9,8 @@ import (
 	"github.com/gobackpack/hamr/oauth"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	"gorm.io/gorm"
+	"net/http"
 	"strings"
 	"time"
 )
@@ -44,6 +47,23 @@ func New(config *Config) *auth {
 	seedCasbinPolicy(config.Db)
 
 	return hamrAuth
+}
+
+func NewConfig(db *gorm.DB) *Config {
+	return &Config{
+		Scheme:     "http",
+		Host:       "localhost",
+		Port:       "8080",
+		RouteGroup: "/api/auth",
+		Router:     NewRouter(),
+		Db:         db,
+		CacheStorage: NewRedisCacheStorage(
+			viper.GetString("auth.cache.redis.host"),
+			viper.GetString("auth.cache.redis.port"),
+			viper.GetString("auth.cache.redis.password"),
+			viper.GetInt("auth.cache.db")),
+		EnableLocalLogin: true,
+	}
 }
 
 // NewRouter will return new gin router
@@ -125,5 +145,22 @@ func (auth *auth) runMigrations() {
 	err := auth.config.Db.AutoMigrate(&User{})
 	if err != nil {
 		logrus.Fatal("migrations failed: ", err)
+	}
+}
+
+// JSON response
+func JSON(statusCode int, w http.ResponseWriter, data interface{}) {
+	resp, err := json.Marshal(data)
+	if err != nil {
+		logrus.Error(err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+
+	if _, err = w.Write(resp); err != nil {
+		logrus.Error(err)
+		return
 	}
 }
