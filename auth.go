@@ -69,7 +69,6 @@ type tokenClaims map[string]interface{}
 // authTokens contains pair of access_token and refresh_token after authentication. These token pairs are returned to the user
 type authTokens map[string]string
 
-// New will initialize *auth api
 func New(config *Config) *auth {
 	config.accessTokenSecret = []byte(viper.GetString("auth.access_token.secret"))
 	config.accessTokenExpiry = time.Minute * time.Duration(viper.GetInt("auth.access_token.expiry"))
