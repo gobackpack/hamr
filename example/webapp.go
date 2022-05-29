@@ -33,10 +33,7 @@ func main() {
 		logrus.Fatal(err)
 	}
 
-	router := hamr.NewGinRouter()
-
 	auth := hamr.New(hamr.NewConfig(db))
-	auth.MapAuthRoutesGin(router)
 
 	accountConfirmation := hamr.NewAccountConfirmation(
 		"smtp.gmail.com",
@@ -50,6 +47,8 @@ func main() {
 	accountConfirmation.Body = "Confirm clicking on the link: "
 	accountConfirmation.LinkText = "Here"
 
+	router := hamr.NewGinRouter()
+	auth.MapAuthRoutesGin(router)
 	auth.MapAccountConfirmationRoutesGin(router, accountConfirmation)
 
 	// can be used to update other user fields during registration flow
