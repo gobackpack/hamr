@@ -90,7 +90,7 @@ func New(config *Config) *auth {
 		config: config,
 	}
 
-	hamrAuth.runMigrations()
+	runMigrations(config.Db)
 	seedCasbinPolicy(config.Db)
 
 	return hamrAuth
@@ -287,9 +287,8 @@ func (auth *auth) getTokenFromCache(tokenUuid string) (map[string]interface{}, e
 }
 
 // runMigrations will automatically run migrations, TODO: from /migrations/
-func (auth *auth) runMigrations() {
-	err := auth.config.Db.AutoMigrate(&User{})
-	if err != nil {
+func runMigrations(db *gorm.DB) {
+	if err := db.AutoMigrate(&User{}); err != nil {
 		logrus.Fatal("migrations failed: ", err)
 	}
 }
