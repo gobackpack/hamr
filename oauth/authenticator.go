@@ -39,6 +39,14 @@ type Provider interface {
 
 // NewAuthenticator will setup *authenticator, oAuth2 configuration
 func NewAuthenticator(provider, fullPath string) (*authenticator, error) {
+	return newAuthenticator(
+		provider,
+		viper.GetString("auth.provider."+provider+".client_id"),
+		viper.GetString("auth.provider."+provider+".client_secret"),
+		fullPath)
+}
+
+func newAuthenticator(provider, clientId, clientSecret, fullPath string) (*authenticator, error) {
 	providerInstance, ok := SupportedProviders[provider]
 	if !ok || providerInstance == nil {
 		return nil, errors.New("unsupported provider: " + provider)
@@ -47,8 +55,8 @@ func NewAuthenticator(provider, fullPath string) (*authenticator, error) {
 	auth := &authenticator{
 		provider: providerInstance,
 		config: &oauth2.Config{
-			ClientID:     viper.GetString("auth.provider." + provider + ".client_id"),
-			ClientSecret: viper.GetString("auth.provider." + provider + ".client_secret"),
+			ClientID:     clientId,
+			ClientSecret: clientSecret,
 			RedirectURL:  fullPath + "/" + provider + "/callback",
 			Scopes:       providerInstance.Scopes(),
 			Endpoint:     providerInstance.Endpoint(),
