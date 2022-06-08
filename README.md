@@ -11,3 +11,4 @@
 * [ ] Get rid of gin dependency
 * [ ] Make *auth.User pluggable/customizable/expandable without PostRegisterCallback()
 * [ ] Logout per instance (access_token/refresh_token pair) + logout from all instances
+* [ ] Add 2fa
