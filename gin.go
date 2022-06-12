@@ -65,7 +65,7 @@ func (auth *auth) MapAuthRoutesGin(router *gin.Engine) {
 
 func (auth *auth) AuthorizeGinRequest(obj, act string, adapter *gormadapter.Adapter) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		if authorized, err := auth.authorize(obj, act, adapter, ctx.Writer, ctx.Request); !authorized || err != nil {
+		if err := auth.authorize(obj, act, adapter, ctx.Writer, ctx.Request); err != nil {
 			logrus.Error(err)
 			ctx.AbortWithStatus(http.StatusUnauthorized)
 		}

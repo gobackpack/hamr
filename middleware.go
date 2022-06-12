@@ -12,35 +12,35 @@ import (
 
 // authorize middleware will check if request is authorized.
 // If adapter is passed Casbin policy will be checked as well
-func (auth *auth) authorize(obj, act string, adapter *gormadapter.Adapter, w http.ResponseWriter, r *http.Request) (bool, error) {
+func (auth *auth) authorize(obj, act string, adapter *gormadapter.Adapter, w http.ResponseWriter, r *http.Request) error {
 	_, token := getAccessTokenFromRequest(w, r)
 	if strings.TrimSpace(token) == "" {
-		return false, errors.New("token not found")
+		return errors.New("token not found")
 	}
 
 	claims, valid := auth.extractAccessTokenClaims(token)
 	if claims == nil || !valid {
-		return false, errors.New("invalid access token claims")
+		return errors.New("invalid access token claims")
 	}
 
 	userIdFromRequestClaims := claims["sub"]
 	accessTokenUuid := claims["uuid"]
 	if userIdFromRequestClaims == nil || accessTokenUuid == nil {
-		return false, errors.New("userId or accessTokenUuid is nil")
+		return errors.New("userId or accessTokenUuid is nil")
 	}
 
 	accessTokenCached, err := auth.getTokenFromCache(accessTokenUuid.(string))
 	if err != nil {
-		return false, errors.New(fmt.Sprintf("failed to get access token from cache: %s", err))
+		return errors.New(fmt.Sprintf("failed to get access token from cache: %s", err))
 	}
 
 	userIdFromCacheClaims, ok := accessTokenCached["sub"]
 	if !ok {
-		return false, errors.New("sub not found in accessTokenCached")
+		return errors.New("sub not found in accessTokenCached")
 	}
 
 	if userIdFromRequestClaims.(float64) != userIdFromCacheClaims.(float64) {
-		return false, errors.New("userIdFromRequestClaims does not match userIdFromCacheClaims")
+		return errors.New("userIdFromRequestClaims does not match userIdFromCacheClaims")
 	}
 
 	if adapter != nil {
@@ -48,11 +48,11 @@ func (auth *auth) authorize(obj, act string, adapter *gormadapter.Adapter, w htt
 
 		// enforce Casbin policy
 		if policyOk, policyErr := enforce(id, obj, act, adapter); policyErr != nil || !policyOk {
-			return false, errors.New(fmt.Sprintf("casbin policy not passed, err: %s", policyErr))
+			return errors.New(fmt.Sprintf("casbin policy not passed, err: %s", policyErr))
 		}
 	}
 
-	return true, nil
+	return nil
 }
 
 // enforce Casbin policy
