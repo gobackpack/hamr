@@ -145,6 +145,17 @@ func (auth *auth) CasbinAdapter() *gormadapter.Adapter {
 	return auth.config.casbinAdapter
 }
 
+func (auth *auth) Claims(w http.ResponseWriter, r *http.Request) (identity, error) {
+	claims, err := auth.getClaimsFromRequest(w, r)
+	if err != nil {
+		return nil, err
+	}
+
+	return &claimsIdentity{
+		claims: claims,
+	}, nil
+}
+
 // ServeHttp will start http server
 func ServeHttp(addr string, router http.Handler) {
 	httpserver.ServeHttp(addr, router)
@@ -308,17 +319,6 @@ func (auth *auth) getClaimsFromRequest(w http.ResponseWriter, r *http.Request) (
 	}
 
 	return claims, nil
-}
-
-func (auth *auth) Claims(w http.ResponseWriter, r *http.Request) (identity, error) {
-	claims, err := auth.getClaimsFromRequest(w, r)
-	if err != nil {
-		return nil, err
-	}
-
-	return &claimsIdentity{
-		claims: claims,
-	}, nil
 }
 
 func (cIdentity *claimsIdentity) Id() int {
