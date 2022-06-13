@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/gobackpack/hamr"
-	"github.com/gobackpack/hamr/example/provider"
+	"github.com/gobackpack/hamr/example/app1/provider"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"net/http"

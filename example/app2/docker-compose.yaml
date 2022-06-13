@@ -1,0 +1,23 @@
+version: "3.8"
+
+services:
+  pg:
+    image: postgres:latest
+    container_name: webapp_pg
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=webapp
+    ports:
+      - "5432:5432"
+    networks:
+      - webapp
+  redis:
+    image: redis:latest
+    container_name: webapp_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - webapp
+networks:
+  webapp:

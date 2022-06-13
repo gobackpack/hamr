@@ -22,21 +22,6 @@ func NewGinRouter() *gin.Engine {
 	return router
 }
 
-func (auth *auth) MapAccountConfirmationRoutesGin(router *gin.Engine, accountConfirmation *accountConfirmation) {
-	accountConfirmation.fullPath = auth.config.fullPath
-	auth.config.accountConfirmation = accountConfirmation
-
-	r := router.Group(auth.config.RouteGroup)
-
-	r.Handle(http.MethodGet, "confirm/", func(c *gin.Context) {
-		auth.confirmAccountHandler(c.Writer, c.Request)
-	})
-
-	r.Handle(http.MethodPost, "confirm/resend", func(c *gin.Context) {
-		auth.resendAccountConfirmationEmailHandler(c.Writer, c.Request)
-	})
-}
-
 func (auth *auth) MapAuthRoutesGin(router *gin.Engine) {
 	r := router.Group(auth.config.RouteGroup)
 
@@ -61,6 +46,21 @@ func (auth *auth) MapAuthRoutesGin(router *gin.Engine) {
 			auth.loginHandler(c.Writer, c.Request)
 		})
 	}
+}
+
+func (auth *auth) MapAccountConfirmationRoutesGin(router *gin.Engine, accountConfirmation *accountConfirmation) {
+	accountConfirmation.fullPath = auth.config.fullPath
+	auth.config.accountConfirmation = accountConfirmation
+
+	r := router.Group(auth.config.RouteGroup)
+
+	r.Handle(http.MethodGet, "confirm/", func(c *gin.Context) {
+		auth.confirmAccountHandler(c.Writer, c.Request)
+	})
+
+	r.Handle(http.MethodPost, "confirm/resend", func(c *gin.Context) {
+		auth.resendAccountConfirmationEmailHandler(c.Writer, c.Request)
+	})
 }
 
 func (auth *auth) AuthorizeGinRequest(obj, act string, adapter *gormadapter.Adapter) gin.HandlerFunc {
