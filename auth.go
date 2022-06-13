@@ -69,6 +69,17 @@ type tokenClaims map[string]interface{}
 // authTokens contains pair of access_token and refresh_token after authentication. These token pairs are returned to the user
 type authTokens map[string]string
 
+// identity to construct after authorisation
+type identity interface {
+	Id() int
+	Email() string
+}
+
+// claimsIdentity will use claims from access token to construct identity
+type claimsIdentity struct {
+	claims map[string]interface{}
+}
+
 func New(config *Config) *auth {
 	config.accessTokenSecret = []byte(viper.GetString("auth.access_token.secret"))
 	config.accessTokenExpiry = time.Minute * time.Duration(viper.GetInt("auth.access_token.expiry"))
@@ -283,6 +294,41 @@ func (auth *auth) getTokenFromCache(tokenUuid string) (map[string]interface{}, e
 	}
 
 	return cachedToken, nil
+}
+
+func (auth *auth) getClaimsFromRequest(w http.ResponseWriter, r *http.Request) (map[string]interface{}, error) {
+	_, token := getAccessTokenFromRequest(w, r)
+	if strings.TrimSpace(token) == "" {
+		return nil, errors.New("token not found")
+	}
+
+	claims, valid := auth.extractAccessTokenClaims(token)
+	if claims == nil || !valid {
+		return nil, errors.New("invalid access token claims")
+	}
+
+	return claims, nil
+}
+
+func (auth *auth) Claims(w http.ResponseWriter, r *http.Request) (identity, error) {
+	claims, err := auth.getClaimsFromRequest(w, r)
+	if err != nil {
+		return nil, err
+	}
+
+	return &claimsIdentity{
+		claims: claims,
+	}, nil
+}
+
+func (cIdentity *claimsIdentity) Id() int {
+	id := cIdentity.claims["sub"]
+	return int(id.(float64))
+}
+
+func (cIdentity *claimsIdentity) Email() string {
+	email := cIdentity.claims["email"]
+	return email.(string)
 }
 
 // runMigrations will automatically run migrations, TODO: from /migrations/

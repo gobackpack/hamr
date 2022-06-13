@@ -93,12 +93,30 @@ func main() {
 
 	// example #1: protected without roles/policy
 	router.GET("protected", auth.AuthorizeGinRequest("", "", nil), func(ctx *gin.Context) {
-		ctx.JSON(http.StatusOK, "protected")
+		claims, err := auth.Claims(ctx.Writer, ctx.Request)
+		if err != nil {
+			logrus.Error(err)
+			ctx.AbortWithStatus(http.StatusUnauthorized)
+		}
+
+		email := claims.Email()
+		id := claims.Id()
+
+		ctx.JSON(http.StatusOK, fmt.Sprintf("user[%v] %s accessed protected route", id, email))
 	})
 
 	// example #2: protected with roles/policy
 	router.GET("protected/policy", auth.AuthorizeGinRequest("usr", "read", auth.CasbinAdapter()), func(ctx *gin.Context) {
-		ctx.JSON(http.StatusOK, "policy protected")
+		claims, err := auth.Claims(ctx.Writer, ctx.Request)
+		if err != nil {
+			logrus.Error(err)
+			ctx.AbortWithStatus(http.StatusUnauthorized)
+		}
+
+		email := claims.Email()
+		id := claims.Id()
+
+		ctx.JSON(http.StatusOK, fmt.Sprintf("user[%v] %s accessed policy protected route", id, email))
 	})
 
 	// example #3: public

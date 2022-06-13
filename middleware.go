@@ -7,20 +7,14 @@ import (
 	gormadapter "github.com/casbin/gorm-adapter/v3"
 	"net/http"
 	"strconv"
-	"strings"
 )
 
 // authorize middleware will check if request is authorized.
 // If adapter is passed Casbin policy will be checked as well
 func (auth *auth) authorize(obj, act string, adapter *gormadapter.Adapter, w http.ResponseWriter, r *http.Request) error {
-	_, token := getAccessTokenFromRequest(w, r)
-	if strings.TrimSpace(token) == "" {
-		return errors.New("token not found")
-	}
-
-	claims, valid := auth.extractAccessTokenClaims(token)
-	if claims == nil || !valid {
-		return errors.New("invalid access token claims")
+	claims, err := auth.getClaimsFromRequest(w, r)
+	if err != nil {
+		return err
 	}
 
 	userIdFromRequestClaims := claims["sub"]
