@@ -108,7 +108,6 @@ func NewConfig(db *gorm.DB) *Config {
 			viper.GetString("auth.cache.redis.port"),
 			viper.GetString("auth.cache.redis.password"),
 			viper.GetInt("auth.cache.db")),
-		EnableLocalLogin: true,
 	}
 }
 

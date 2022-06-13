@@ -33,7 +33,9 @@ func main() {
 		logrus.Fatal(err)
 	}
 
-	auth := hamr.New(hamr.NewConfig(db))
+	conf := hamr.NewConfig(db)
+	conf.EnableLocalLogin = true
+	auth := hamr.New(conf)
 
 	accountConfirmation := hamr.NewAccountConfirmation(
 		"smtp.gmail.com",

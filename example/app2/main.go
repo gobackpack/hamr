@@ -20,7 +20,6 @@ func main() {
 	}
 
 	conf := hamr.NewConfig(db)
-	conf.EnableLocalLogin = false
 	auth := hamr.New(conf)
 
 	router := hamr.NewGinRouter()
