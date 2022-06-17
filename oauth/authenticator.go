@@ -6,9 +6,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"github.com/gobackpack/hamr/oauth/models"
-	"github.com/gobackpack/hamr/oauth/providers"
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
 	"golang.org/x/oauth2"
 	"net/http"
 	"time"
@@ -16,13 +14,11 @@ import (
 
 const (
 	oAuthLoginAntiForgeryKey = "externalLoginAntiForgery"
+	stateExpiry              = time.Minute * 2
 )
 
 // SupportedProviders are registered oauth providers for *authenticator
-var SupportedProviders = map[string]Provider{
-	"google": &providers.Google{},
-	"github": &providers.Github{},
-}
+var SupportedProviders = map[string]Provider{}
 
 // authenticator is responsible for oauth logins, oAuth2 configuration setup
 type authenticator struct {
@@ -32,32 +28,38 @@ type authenticator struct {
 
 // Provider specific requirements for *authenticator
 type Provider interface {
+	Credentials
+
 	Scopes() []string
 	Endpoint() oauth2.Endpoint
 	GetUserInfo(string) (*models.UserInfo, error)
 }
 
-// NewAuthenticator will setup *authenticator, oAuth2 configuration
-func NewAuthenticator(provider, fullPath string) (*authenticator, error) {
-	return newAuthenticator(
-		provider,
-		viper.GetString("auth.provider."+provider+".client_id"),
-		viper.GetString("auth.provider."+provider+".client_secret"),
-		fullPath)
+// Credentials for each Provider
+type Credentials interface {
+	ClientId() string
+	ClientSecret() string
 }
 
-func newAuthenticator(provider, clientId, clientSecret, fullPath string) (*authenticator, error) {
+// NewAuthenticator will setup *authenticator, oAuth2 configuration
+func NewAuthenticator(provider, authPath string) (*authenticator, error) {
 	providerInstance, ok := SupportedProviders[provider]
 	if !ok || providerInstance == nil {
 		return nil, errors.New("unsupported provider: " + provider)
 	}
 
+	redirectUrl := authPath + "/" + provider + "/callback"
+
+	return newAuthenticator(providerInstance, redirectUrl)
+}
+
+func newAuthenticator(providerInstance Provider, redirectUrl string) (*authenticator, error) {
 	auth := &authenticator{
 		provider: providerInstance,
 		config: &oauth2.Config{
-			ClientID:     clientId,
-			ClientSecret: clientSecret,
-			RedirectURL:  fullPath + "/" + provider + "/callback",
+			ClientID:     providerInstance.ClientId(),
+			ClientSecret: providerInstance.ClientSecret(),
+			RedirectURL:  redirectUrl,
 			Scopes:       providerInstance.Scopes(),
 			Endpoint:     providerInstance.Endpoint(),
 		},
@@ -128,7 +130,7 @@ func (auth *authenticator) setLoginAntiForgeryCookie(w http.ResponseWriter, r *h
 	}
 
 	state := base64.URLEncoding.EncodeToString(b)
-	var expiration = time.Now().Add(time.Minute * time.Duration(viper.GetInt("auth.state_expiry")))
+	var expiration = time.Now().Add(stateExpiry)
 
 	cookie := http.Cookie{Name: oAuthLoginAntiForgeryKey, Value: state, Expires: expiration}
 	http.SetCookie(w, &cookie)

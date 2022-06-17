@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/gobackpack/hamr"
+	"github.com/gobackpack/hamr/oauth/providers"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"net/http"
@@ -25,6 +26,10 @@ func main() {
 
 	router := hamr.NewGinRouter()
 	auth.MapAuthRoutesGin(router)
+
+	auth.RegisterProvider("google", providers.NewGoogle(
+		viper.GetString("auth.provider.google.client_id"),
+		viper.GetString("auth.provider.google.client_secret")))
 
 	// example #1: protected without roles/policy
 	router.GET("protected", auth.AuthorizeGinRequest("", "", nil), func(ctx *gin.Context) {

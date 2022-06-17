@@ -12,11 +12,29 @@ import (
 )
 
 // Github oauth provider implementation
-type Github struct{}
+type Github struct {
+	clientId     string
+	clientSecret string
+}
 
 type githubResponse struct {
 	Id    int    `json:"id"`
 	Email string `json:"email"`
+}
+
+func NewGithub(clientId, clientSecret string) *Github {
+	return &Github{
+		clientId:     clientId,
+		clientSecret: clientSecret,
+	}
+}
+
+func (provider *Github) ClientId() string {
+	return provider.clientId
+}
+
+func (provider *Github) ClientSecret() string {
+	return provider.clientSecret
 }
 
 func (*Github) Scopes() []string {

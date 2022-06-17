@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gobackpack/hamr"
 	"github.com/gobackpack/hamr/example/app1/provider"
+	"github.com/gobackpack/hamr/oauth/providers"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"net/http"
@@ -87,9 +88,14 @@ func main() {
 		logrus.Fatal(err)
 	}
 
-	// register custom provider
-	// name property must match value from config/app.yml -> provider.github, provider.google...
-	auth.RegisterProvider("github", provider.NewCustomGithub())
+	// register oauth providers
+	auth.RegisterProvider("github", provider.NewCustomGithub(
+		viper.GetString("auth.provider.google.client_id"),
+		viper.GetString("auth.provider.google.client_secret")))
+
+	auth.RegisterProvider("google", providers.NewGoogle(
+		viper.GetString("auth.provider.google.client_id"),
+		viper.GetString("auth.provider.google.client_secret")))
 
 	// example #1: protected without roles/policy
 	router.GET("protected", auth.AuthorizeGinRequest("", "", nil), func(ctx *gin.Context) {

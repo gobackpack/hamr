@@ -11,11 +11,29 @@ import (
 )
 
 // Google oauth provider implementation
-type Google struct{}
+type Google struct {
+	clientId     string
+	clientSecret string
+}
 
 type googleResponse struct {
 	Id    string `json:"id"`
 	Email string `json:"email"`
+}
+
+func NewGoogle(clientId, clientSecret string) *Google {
+	return &Google{
+		clientId:     clientId,
+		clientSecret: clientSecret,
+	}
+}
+
+func (provider *Google) ClientId() string {
+	return provider.clientId
+}
+
+func (provider *Google) ClientSecret() string {
+	return provider.clientSecret
 }
 
 func (*Google) Scopes() []string {

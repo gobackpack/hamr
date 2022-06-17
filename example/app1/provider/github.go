@@ -11,15 +11,29 @@ import (
 	"net/http"
 )
 
-type CustomGithubProvider struct{}
+type CustomGithubProvider struct {
+	clientId     string
+	clientSecret string
+}
 
 type githubResponse struct {
 	Id    int    `json:"id"`
 	Email string `json:"email"`
 }
 
-func NewCustomGithub() *CustomGithubProvider {
-	return &CustomGithubProvider{}
+func NewCustomGithub(clientId, clientSecret string) *CustomGithubProvider {
+	return &CustomGithubProvider{
+		clientId:     clientId,
+		clientSecret: clientSecret,
+	}
+}
+
+func (provider *CustomGithubProvider) ClientId() string {
+	return provider.clientId
+}
+
+func (provider *CustomGithubProvider) ClientSecret() string {
+	return provider.clientSecret
 }
 
 func (*CustomGithubProvider) Scopes() []string {
