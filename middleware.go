@@ -41,7 +41,7 @@ func (auth *auth) authorize(obj, act string, adapter *gormadapter.Adapter, w htt
 		id := strconv.Itoa(int(userIdFromRequestClaims.(float64)))
 
 		// enforce Casbin policy
-		if policyOk, policyErr := enforce(id, obj, act, adapter); policyErr != nil || !policyOk {
+		if policyOk, policyErr := enforce(id, obj, act, auth.config.casbinPolicy, adapter); policyErr != nil || !policyOk {
 			return errors.New(fmt.Sprintf("casbin policy not passed, err: %s", policyErr))
 		}
 	}
@@ -50,8 +50,8 @@ func (auth *auth) authorize(obj, act string, adapter *gormadapter.Adapter, w htt
 }
 
 // enforce Casbin policy
-func enforce(sub string, obj string, act string, adapter *gormadapter.Adapter) (bool, error) {
-	enforcer, err := casbin.NewEnforcer(*Path+"casbin_model.conf", adapter)
+func enforce(sub string, obj string, act string, policy string, adapter *gormadapter.Adapter) (bool, error) {
+	enforcer, err := casbin.NewEnforcer(policy, adapter)
 	if err != nil {
 		return false, fmt.Errorf("failed to create casbin enforcer: %s", err)
 	}

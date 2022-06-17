@@ -49,6 +49,7 @@ type Config struct {
 	basePath            string
 	authPath            string
 	casbinAdapter       *gormadapter.Adapter
+	casbinPolicy        string
 	accountConfirmation *accountConfirmation
 }
 
@@ -80,25 +81,26 @@ type claimsIdentity struct {
 	claims map[string]interface{}
 }
 
-func New(config *Config) *auth {
-	config.Host = strings.Trim(config.Host, "/")
-	config.RouteGroup = strings.Trim(config.RouteGroup, "/")
-	config.basePath = config.Scheme + "://" + config.Host + ":" + config.Port
-	config.authPath = config.basePath + "/" + config.RouteGroup
+func New(conf *Config) *auth {
+	conf.Host = strings.Trim(conf.Host, "/")
+	conf.RouteGroup = strings.Trim(conf.RouteGroup, "/")
+	conf.basePath = conf.Scheme + "://" + conf.Host + ":" + conf.Port
+	conf.authPath = conf.basePath + "/" + conf.RouteGroup
 
-	adapter, err := gormadapter.NewAdapterByDB(config.Db)
+	adapter, err := gormadapter.NewAdapterByDB(conf.Db)
 	if err != nil {
 		logrus.Fatal("failed to initialize casbin adapter: ", err)
 	}
 
-	config.casbinAdapter = adapter
+	conf.casbinAdapter = adapter
+	conf.casbinPolicy = *Path + "casbin_model.conf"
 
 	hamrAuth := &auth{
-		config: config,
+		config: conf,
 	}
 
-	runMigrations(config.Db)
-	seedCasbinPolicy(config.Db)
+	runMigrations(conf.Db)
+	seedCasbinPolicy(conf.Db)
 
 	return hamrAuth
 }
