@@ -42,7 +42,7 @@ func (auth *auth) authorize(obj, act string, adapter *gormadapter.Adapter, w htt
 		id := strconv.Itoa(int(userIdFromRequestClaims.(float64)))
 
 		// enforce Casbin policy
-		if policyOk, policyErr := enforce(id, obj, act, auth.config.casbinPolicy, adapter); policyErr != nil || !policyOk {
+		if policyOk, policyErr := enforce(id, obj, act, auth.config.CasbinPolicy, adapter); policyErr != nil || !policyOk {
 			return errors.New(fmt.Sprintf("casbin policy not passed, err: %s", policyErr))
 		}
 	}

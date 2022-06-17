@@ -37,16 +37,16 @@ type Config struct {
 	Db               *gorm.DB
 	CacheStorage     cache.Storage
 	EnableLocalLogin bool
+	CasbinPolicy     string
 
 	accessTokenSecret  []byte
 	accessTokenExpiry  time.Duration
 	refreshTokenSecret []byte
-	refreshTokenExpiry time.Duration
 
+	refreshTokenExpiry  time.Duration
 	basePath            string
 	authPath            string
 	casbinAdapter       *gormadapter.Adapter
-	casbinPolicy        string
 	accountConfirmation *accountConfirmation
 }
 
@@ -90,7 +90,7 @@ func New(conf *Config) *auth {
 	}
 
 	conf.casbinAdapter = adapter
-	conf.casbinPolicy = casbinPolicyModel()
+	conf.CasbinPolicy = casbinPolicyModel()
 
 	hamrAuth := &auth{
 		config: conf,
