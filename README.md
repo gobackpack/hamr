@@ -1,11 +1,3 @@
-### Required configurations at:
-
-* *config/app.yml* 
-* *config/casbin_model.conf*
-
-
-> *go run -race main.go [-cpath=my/custom/config/path]*
-
 ### TODO
 
 * [ ] Get rid of gin dependency
