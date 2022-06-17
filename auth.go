@@ -3,7 +3,6 @@ package hamr
 import (
 	"encoding/json"
 	"errors"
-	"flag"
 	gormadapter "github.com/casbin/gorm-adapter/v3"
 	"github.com/gobackpack/hamr/internal/cache"
 	"github.com/gobackpack/hamr/internal/httpserver"
@@ -22,8 +21,6 @@ import (
 Main module.
 Responsible for tokens (access, refresh), claims and sessions.
 */
-
-var Path = flag.String("cpath", "config/", "casbin configuration path")
 
 // auth main api
 type auth struct {
@@ -93,7 +90,7 @@ func New(conf *Config) *auth {
 	}
 
 	conf.casbinAdapter = adapter
-	conf.casbinPolicy = *Path + "casbin_model.conf"
+	conf.casbinPolicy = casbinPolicyModel()
 
 	hamrAuth := &auth{
 		config: conf,
@@ -396,4 +393,23 @@ func getAccessTokenFromRequest(w http.ResponseWriter, r *http.Request) (string, 
 	}
 
 	return schema, token
+}
+
+func casbinPolicyModel() string {
+	return `
+		[request_definition]
+		r = sub, obj, act
+		
+		[policy_definition]
+		p = sub, obj, act
+		
+		[role_definition]
+		g = _, _
+		
+		[policy_effect]
+		e = some(where (p.eft == allow))
+		
+		[matchers]
+		m = g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act
+	`
 }

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/casbin/casbin/v2"
+	"github.com/casbin/casbin/v2/model"
 	gormadapter "github.com/casbin/gorm-adapter/v3"
 	"net/http"
 	"strconv"
@@ -51,7 +52,12 @@ func (auth *auth) authorize(obj, act string, adapter *gormadapter.Adapter, w htt
 
 // enforce Casbin policy
 func enforce(sub string, obj string, act string, policy string, adapter *gormadapter.Adapter) (bool, error) {
-	enforcer, err := casbin.NewEnforcer(policy, adapter)
+	m, err := model.NewModelFromString(policy)
+	if err != nil {
+		return false, fmt.Errorf("failed to create casbin model from string: %s", err)
+	}
+
+	enforcer, err := casbin.NewEnforcer(m, adapter)
 	if err != nil {
 		return false, fmt.Errorf("failed to create casbin enforcer: %s", err)
 	}
