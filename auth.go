@@ -42,8 +42,8 @@ type Config struct {
 	accessTokenSecret  []byte
 	accessTokenExpiry  time.Duration
 	refreshTokenSecret []byte
-
-	refreshTokenExpiry  time.Duration
+	refreshTokenExpiry time.Duration
+	
 	basePath            string
 	authPath            string
 	casbinAdapter       *gormadapter.Adapter
