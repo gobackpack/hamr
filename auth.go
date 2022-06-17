@@ -207,7 +207,7 @@ func (auth *auth) generateTokens(claims tokenClaims) (*tokenDetails, error) {
 
 // storeTokensInCache will save access and refresh tokens in cache
 func (auth *auth) storeTokensInCache(sub interface{}, td *tokenDetails) error {
-	// these properties are created so we can later easily find connection between access and refresh tokens
+	// cross-reference properties are created so we can later easily find connection between access and refresh tokens
 	// it's needed for easier cleanup on logout and refresh/token
 
 	accessTokenCacheValue := map[string]interface{}{
