@@ -127,7 +127,7 @@ func (auth *auth) CasbinAdapter() *gormadapter.Adapter {
 	return auth.config.casbinAdapter
 }
 
-// Claims will get claims from access token from request
+// Claims will extract claims from access token from request
 func (auth *auth) Claims(w http.ResponseWriter, r *http.Request) (identity, error) {
 	claims, err := auth.getClaimsFromRequest(w, r)
 	if err != nil {
