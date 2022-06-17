@@ -9,9 +9,9 @@ import (
 	"github.com/gobackpack/hamr/internal/httpserver"
 	"github.com/gobackpack/hamr/oauth"
 	"github.com/gobackpack/jwt"
+	"github.com/gobackpack/random"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
 	"gorm.io/gorm"
 	"net/http"
 	"strings"
@@ -23,7 +23,7 @@ Main module.
 Responsible for tokens (access, refresh), claims and sessions.
 */
 
-var Path = flag.String("cpath", "config/", "configuration path")
+var Path = flag.String("cpath", "config/", "casbin configuration path")
 
 // auth main api
 type auth struct {
@@ -47,7 +47,7 @@ type Config struct {
 	refreshTokenExpiry time.Duration
 
 	basePath            string
-	fullPath            string
+	authPath            string
 	casbinAdapter       *gormadapter.Adapter
 	accountConfirmation *accountConfirmation
 }
@@ -81,14 +81,10 @@ type claimsIdentity struct {
 }
 
 func New(config *Config) *auth {
-	config.accessTokenSecret = []byte(viper.GetString("auth.access_token.secret"))
-	config.accessTokenExpiry = time.Minute * time.Duration(viper.GetInt("auth.access_token.expiry"))
-	config.refreshTokenSecret = []byte(viper.GetString("auth.refresh_token.secret"))
-	config.refreshTokenExpiry = time.Minute * time.Duration(viper.GetInt("auth.refresh_token.expiry"))
 	config.Host = strings.Trim(config.Host, "/")
 	config.RouteGroup = strings.Trim(config.RouteGroup, "/")
 	config.basePath = config.Scheme + "://" + config.Host + ":" + config.Port
-	config.fullPath = config.basePath + "/" + config.RouteGroup
+	config.authPath = config.basePath + "/" + config.RouteGroup
 
 	adapter, err := gormadapter.NewAdapterByDB(config.Db)
 	if err != nil {
@@ -107,35 +103,22 @@ func New(config *Config) *auth {
 	return hamrAuth
 }
 
-func NewConfig(db *gorm.DB) *Config {
+func NewConfig(db *gorm.DB, cacheStorage cache.Storage) *Config {
 	return &Config{
-		Scheme:     "http",
-		Host:       "localhost",
-		Port:       "8080",
-		RouteGroup: "/api/auth",
-		Db:         db,
-		CacheStorage: NewRedisCacheStorage(
-			viper.GetString("auth.cache.redis.host"),
-			viper.GetString("auth.cache.redis.port"),
-			viper.GetString("auth.cache.redis.password"),
-			viper.GetInt("auth.cache.db")),
-	}
-}
-
-// InitializeViper default settings. Config path, type...
-func InitializeViper() {
-	viper.AddConfigPath(*Path)
-	viper.SetConfigName("app")
-	viper.AutomaticEnv()
-	viper.SetConfigType("yml")
-
-	if err := viper.ReadInConfig(); err != nil {
-		logrus.Fatal("viper failed to read config file: ", err)
+		Scheme:             "http",
+		Host:               "localhost",
+		Port:               "8080",
+		RouteGroup:         "/api/auth",
+		accessTokenSecret:  []byte(random.Str(16)),
+		accessTokenExpiry:  time.Minute * 15,
+		refreshTokenSecret: []byte(random.Str(16)),
+		refreshTokenExpiry: time.Hour * 24 * 7,
+		Db:                 db,
+		CacheStorage:       cacheStorage,
 	}
 }
 
 // RegisterProvider will append oauth.SupportedProviders with passed Provider.
-// Name must match settings in /config/app.yml
 func (auth *auth) RegisterProvider(name string, provider oauth.Provider) {
 	oauth.SupportedProviders[name] = provider
 }

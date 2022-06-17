@@ -8,7 +8,6 @@ import (
 	"github.com/gobackpack/hamr/example/app1/provider"
 	"github.com/gobackpack/hamr/oauth/providers"
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
 	"net/http"
 	"strconv"
 	"time"
@@ -27,14 +26,16 @@ type User struct {
 func main() {
 	flag.Parse()
 
-	hamr.InitializeViper()
-
-	db, err := hamr.PostgresDb(viper.GetString("database.connstring"))
+	db, err := hamr.PostgresDb("host=localhost port=5432 dbname=webapp user=postgres password=postgres sslmode=disable")
 	if err != nil {
 		logrus.Fatal(err)
 	}
 
-	conf := hamr.NewConfig(db)
+	conf := hamr.NewConfig(db, hamr.NewRedisCacheStorage(
+		"",
+		"6379",
+		"",
+		1))
 	conf.EnableLocalLogin = true
 	auth := hamr.New(conf)
 
@@ -90,12 +91,12 @@ func main() {
 
 	// register oauth providers
 	auth.RegisterProvider("github", provider.NewCustomGithub(
-		viper.GetString("auth.provider.google.client_id"),
-		viper.GetString("auth.provider.google.client_secret")))
+		"0f08295be2677845e936",
+		"b313ce977b07a6e25f778caa8ef8b286a03f2924"))
 
 	auth.RegisterProvider("google", providers.NewGoogle(
-		viper.GetString("auth.provider.google.client_id"),
-		viper.GetString("auth.provider.google.client_secret")))
+		"212763908463-e0tpnd2jjaqusrj3svfgcp1m792etivb.apps.googleusercontent.com",
+		"SOIHmffrwyTqN0QzDfIuaJqq"))
 
 	// example #1: protected without roles/policy
 	router.GET("protected", auth.AuthorizeGinRequest("", "", nil), func(ctx *gin.Context) {

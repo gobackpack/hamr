@@ -49,7 +49,7 @@ func (auth *auth) MapAuthRoutesGin(router *gin.Engine) {
 }
 
 func (auth *auth) MapAccountConfirmationRoutesGin(router *gin.Engine, accountConfirmation *accountConfirmation) {
-	accountConfirmation.fullPath = auth.config.fullPath
+	accountConfirmation.authPath = auth.config.authPath
 	auth.config.accountConfirmation = accountConfirmation
 
 	r := router.Group(auth.config.RouteGroup)

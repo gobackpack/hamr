@@ -28,7 +28,7 @@ type accountConfirmation struct {
 	LinkText string
 
 	tokenExpiry time.Duration
-	fullPath    string
+	authPath    string
 	mailer      *mailer
 	from        string
 }
@@ -60,7 +60,7 @@ func NewAccountConfirmation(host string, port int, username string, password str
 
 // sendConfirmationEmail will send confirmation email to user
 func (accountConfirmation *accountConfirmation) sendConfirmationEmail(registeredUserEmail string, token string) error {
-	endpoint := "<a href=\"" + accountConfirmation.fullPath + confirmationEndpoint + token + "\">" + accountConfirmation.LinkText + "</a>"
+	endpoint := "<a href=\"" + accountConfirmation.authPath + confirmationEndpoint + token + "\">" + accountConfirmation.LinkText + "</a>"
 
 	return accountConfirmation.mailer.send(
 		accountConfirmation.from,
