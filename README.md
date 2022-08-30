@@ -1,3 +1,5 @@
+![alt Go](https://img.shields.io/github/go-mod/go-version/gobackpack/hamr)
+
 ### TODO
 
 * [x] Get rid of gin dependency
