@@ -24,12 +24,12 @@ Responsible for tokens (access, refresh), claims and sessions.
 
 // auth main api
 type auth struct {
-	config               *Config
+	conf                 *config
 	PostRegisterCallback func(user *User, requestData map[string]interface{}) error
 }
 
-// Config for *auth api
-type Config struct {
+// config for *auth api
+type config struct {
 	Scheme           string
 	Host             string
 	Port             string
@@ -78,7 +78,7 @@ type claimsIdentity struct {
 	claims map[string]interface{}
 }
 
-func New(conf *Config) *auth {
+func New(conf *config) *auth {
 	conf.Host = strings.Trim(conf.Host, "/")
 	conf.RouteGroup = strings.Trim(conf.RouteGroup, "/")
 	conf.basePath = conf.Scheme + "://" + conf.Host + ":" + conf.Port
@@ -93,7 +93,7 @@ func New(conf *Config) *auth {
 	conf.CasbinPolicy = casbinPolicyModel()
 
 	hamrAuth := &auth{
-		config: conf,
+		conf: conf,
 	}
 
 	runMigrations(conf.Db)
@@ -102,8 +102,8 @@ func New(conf *Config) *auth {
 	return hamrAuth
 }
 
-func NewConfig(db *gorm.DB, cacheStorage cache.Storage) *Config {
-	return &Config{
+func NewConfig(db *gorm.DB, cacheStorage cache.Storage) *config {
+	return &config{
 		Scheme:             "http",
 		Host:               "localhost",
 		Port:               "8080",
@@ -124,7 +124,7 @@ func (auth *auth) RegisterProvider(name string, provider oauth.Provider) {
 
 // CasbinAdapter will return initialized Casbin adapter. Required for protection with Casbin policies
 func (auth *auth) CasbinAdapter() *gormadapter.Adapter {
-	return auth.config.casbinAdapter
+	return auth.conf.casbinAdapter
 }
 
 // Claims will extract claims from access token from request
@@ -185,12 +185,12 @@ func (auth *auth) createSession(claims tokenClaims) (authTokens, error) {
 
 // generateTokens will generate pair of access and refresh tokens
 func (auth *auth) generateTokens(claims tokenClaims) (*tokenDetails, error) {
-	accessTokenUuid, accessTokenValue, err := generateToken(auth.config.accessTokenSecret, auth.config.accessTokenExpiry, claims)
+	accessTokenUuid, accessTokenValue, err := generateToken(auth.conf.accessTokenSecret, auth.conf.accessTokenExpiry, claims)
 	if err != nil {
 		return nil, err
 	}
 
-	refreshTokenUuid, refreshTokenValue, err := generateToken(auth.config.refreshTokenSecret, auth.config.refreshTokenExpiry, claims)
+	refreshTokenUuid, refreshTokenValue, err := generateToken(auth.conf.refreshTokenSecret, auth.conf.refreshTokenExpiry, claims)
 	if err != nil {
 		return nil, err
 	}
@@ -198,10 +198,10 @@ func (auth *auth) generateTokens(claims tokenClaims) (*tokenDetails, error) {
 	return &tokenDetails{
 		accessTokenValue:   accessTokenValue,
 		accessTokenUuid:    accessTokenUuid,
-		accessTokenExpiry:  auth.config.accessTokenExpiry,
+		accessTokenExpiry:  auth.conf.accessTokenExpiry,
 		refreshTokenValue:  refreshTokenValue,
 		refreshTokenUuid:   refreshTokenUuid,
-		refreshTokenExpiry: auth.config.refreshTokenExpiry,
+		refreshTokenExpiry: auth.conf.refreshTokenExpiry,
 	}, nil
 }
 
@@ -219,7 +219,7 @@ func (auth *auth) storeTokensInCache(sub interface{}, td *tokenDetails) error {
 		"access_token_uuid": td.accessTokenUuid,
 	}
 
-	return auth.config.CacheStorage.Store(
+	return auth.conf.CacheStorage.Store(
 		&cache.Item{
 			Key:        td.accessTokenUuid,
 			Value:      accessTokenCacheValue,
@@ -254,7 +254,7 @@ func (auth *auth) destroySession(accessToken string) error {
 		return errors.New("refresh_token_uuid not found in cached access_token")
 	}
 
-	if err = auth.config.CacheStorage.Delete(accessTokenUuid.(string), refreshTokenUuid.(string)); err != nil {
+	if err = auth.conf.CacheStorage.Delete(accessTokenUuid.(string), refreshTokenUuid.(string)); err != nil {
 		logrus.Errorf(
 			"failed to delete tokens from cache, access token uuid: %s, refresh token uuid: %s",
 			accessTokenUuid.(string),
@@ -267,17 +267,17 @@ func (auth *auth) destroySession(accessToken string) error {
 
 // extractAccessTokenClaims will validate and extract access token claims. Access token secret is used for validation
 func (auth *auth) extractAccessTokenClaims(accessToken string) (map[string]interface{}, bool) {
-	return extractToken(accessToken, auth.config.accessTokenSecret)
+	return extractToken(accessToken, auth.conf.accessTokenSecret)
 }
 
 // extractRefreshTokenClaims will validate and extract refresh token. Refresh token secret is used for validation
 func (auth *auth) extractRefreshTokenClaims(refreshToken string) (map[string]interface{}, bool) {
-	return extractToken(refreshToken, auth.config.refreshTokenSecret)
+	return extractToken(refreshToken, auth.conf.refreshTokenSecret)
 }
 
 // getTokenFromCache will get and unmarshal token from cache
 func (auth *auth) getTokenFromCache(tokenUuid string) (map[string]interface{}, error) {
-	cachedTokenBytes, err := auth.config.CacheStorage.Get(tokenUuid)
+	cachedTokenBytes, err := auth.conf.CacheStorage.Get(tokenUuid)
 	if err != nil {
 		return nil, errors.New("token is no longer active")
 	}

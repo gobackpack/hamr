@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/gobackpack/hamr"
+	"github.com/gobackpack/hamr/internal/web"
 	"github.com/gobackpack/hamr/oauth/providers"
 	"github.com/sirupsen/logrus"
 	"net/http"
@@ -25,7 +26,7 @@ func main() {
 		1))
 	auth := hamr.New(conf)
 
-	router := hamr.NewGinRouter()
+	router := web.NewGinRouter()
 	auth.MapAuthRoutesGin(router)
 
 	auth.RegisterProvider("google", providers.NewGoogle(

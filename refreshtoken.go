@@ -65,7 +65,7 @@ func (auth *auth) refreshToken(refreshToken string) (authTokens, error) {
 	// safe to delete both access and refresh tokens from cache, though access token is probably already deleted
 
 	// delete refresh token uuid
-	if err = auth.config.CacheStorage.Delete(refreshTokenUuid.(string), accessTokenUuid.(string)); err != nil {
+	if err = auth.conf.CacheStorage.Delete(refreshTokenUuid.(string), accessTokenUuid.(string)); err != nil {
 		logrus.Errorf(
 			"failed to delete tokens from cache, access token uuid: %s, refresh token uuid: %s",
 			accessTokenUuid.(string),

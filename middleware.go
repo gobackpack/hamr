@@ -3,7 +3,6 @@ package hamr
 import (
 	"errors"
 	"fmt"
-	"github.com/casbin/casbin/v2"
 	"github.com/casbin/casbin/v2/model"
 	gormadapter "github.com/casbin/gorm-adapter/v3"
 	"net/http"
@@ -42,7 +41,7 @@ func (auth *auth) authorize(obj, act string, adapter *gormadapter.Adapter, w htt
 		id := strconv.Itoa(int(userIdFromRequestClaims.(float64)))
 
 		// enforce Casbin policy
-		if policyOk, policyErr := enforce(id, obj, act, auth.config.CasbinPolicy, adapter); policyErr != nil || !policyOk {
+		if policyOk, policyErr := enforce(id, obj, act, auth.conf.CasbinPolicy, adapter); policyErr != nil || !policyOk {
 			return errors.New(fmt.Sprintf("casbin policy not passed, err: %s", policyErr))
 		}
 	}

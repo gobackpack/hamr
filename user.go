@@ -28,7 +28,7 @@ type User struct {
 func (auth *auth) getUserByEmail(email string) *User {
 	var usrEntity *User
 
-	if result := auth.config.Db.Where("email", email).Find(&usrEntity); result.Error != nil {
+	if result := auth.conf.Db.Where("email", email).Find(&usrEntity); result.Error != nil {
 		return nil
 	}
 
@@ -41,7 +41,7 @@ func (auth *auth) getUserByEmail(email string) *User {
 
 // addUser will create new *User in database. During registration process or first time using oauth login (auto-register)
 func (auth *auth) addUser(user *User) error {
-	tx := auth.config.Db.Begin()
+	tx := auth.conf.Db.Begin()
 	defer func() {
 		if r := recover(); r != nil {
 			tx.Rollback()
@@ -69,5 +69,5 @@ func (auth *auth) addUser(user *User) error {
 
 // editUser will update *User. Used in authentication process (updating login provider and password)
 func (auth *auth) editUser(user *User) error {
-	return auth.config.Db.Save(user).Error
+	return auth.conf.Db.Save(user).Error
 }

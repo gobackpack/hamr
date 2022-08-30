@@ -23,7 +23,7 @@ var SupportedProviders = map[string]Provider{}
 // authenticator is responsible for oauth logins, oAuth2 configuration setup
 type authenticator struct {
 	provider Provider
-	config   *oauth2.Config
+	conf     *oauth2.Config
 }
 
 // Provider specific requirements for *authenticator
@@ -56,7 +56,7 @@ func NewAuthenticator(provider, authPath string) (*authenticator, error) {
 func newAuthenticator(providerInstance Provider, redirectUrl string) (*authenticator, error) {
 	auth := &authenticator{
 		provider: providerInstance,
-		config: &oauth2.Config{
+		conf: &oauth2.Config{
 			ClientID:     providerInstance.ClientId(),
 			ClientSecret: providerInstance.ClientSecret(),
 			RedirectURL:  redirectUrl,
@@ -76,7 +76,7 @@ func (auth *authenticator) RedirectToLoginUrl(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	oAuthLoginUrl := auth.config.AuthCodeURL(oAuthState)
+	oAuthLoginUrl := auth.conf.AuthCodeURL(oAuthState)
 
 	http.Redirect(w, r, oAuthLoginUrl, http.StatusTemporaryRedirect)
 }
@@ -112,7 +112,7 @@ func (auth *authenticator) exchangeCodeForToken(w http.ResponseWriter, r *http.R
 		return nil, errors.New("oAuthState do not match")
 	}
 
-	token, err := auth.config.Exchange(context.Background(), oAuthStateCode)
+	token, err := auth.conf.Exchange(context.Background(), oAuthStateCode)
 	if err != nil {
 		return nil, err
 	}

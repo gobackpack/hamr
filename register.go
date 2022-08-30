@@ -71,7 +71,7 @@ func (auth *auth) registerUser(user *User, requestData map[string]interface{}) (
 		}
 	}
 
-	if auth.config.accountConfirmation != nil {
+	if auth.conf.accountConfirmation != nil {
 		go func(user *User) {
 			if err := auth.beginConfirmation(user); err != nil {
 				logrus.Errorf("account confirmation failed: %v", err)

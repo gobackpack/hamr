@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gobackpack/hamr"
 	"github.com/gobackpack/hamr/example/app1/provider"
+	"github.com/gobackpack/hamr/internal/web"
 	"github.com/gobackpack/hamr/oauth/providers"
 	"github.com/sirupsen/logrus"
 	"net/http"
@@ -51,7 +52,7 @@ func main() {
 	accountConfirmation.Body = "Confirm clicking on the link: "
 	accountConfirmation.LinkText = "Here"
 
-	router := hamr.NewGinRouter()
+	router := web.NewGinRouter()
 	auth.MapAuthRoutesGin(router)
 	auth.MapAccountConfirmationRoutesGin(router, accountConfirmation)
 

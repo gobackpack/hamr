@@ -43,7 +43,7 @@ func (auth *auth) loginHandler(w http.ResponseWriter, r *http.Request) {
 
 // oauthLoginHandler maps to :provider login route. Redirects to :provider oAuth login url
 func (auth *auth) oauthLoginHandler(provider string, w http.ResponseWriter, r *http.Request) {
-	authenticator, err := oauth.NewAuthenticator(provider, auth.config.authPath)
+	authenticator, err := oauth.NewAuthenticator(provider, auth.conf.authPath)
 	if err != nil {
 		JSON(http.StatusBadRequest, w, err.Error())
 		return
@@ -54,7 +54,7 @@ func (auth *auth) oauthLoginHandler(provider string, w http.ResponseWriter, r *h
 
 // oauthLoginCallbackHandler maps to :provider login callback route. After login :provider redirects to this route
 func (auth *auth) oauthLoginCallbackHandler(provider string, w http.ResponseWriter, r *http.Request) {
-	authenticator, err := oauth.NewAuthenticator(provider, auth.config.authPath)
+	authenticator, err := oauth.NewAuthenticator(provider, auth.conf.authPath)
 	if err != nil {
 		JSON(http.StatusBadRequest, w, err.Error())
 		return
@@ -82,7 +82,7 @@ func (auth *auth) authenticate(email, password string) (authTokens, error) {
 		return nil, errors.New(fmt.Sprintf("user email %s not registered", email))
 	}
 
-	if auth.config.accountConfirmation != nil && !user.Confirmed {
+	if auth.conf.accountConfirmation != nil && !user.Confirmed {
 		return nil, errors.New("user account not confirmed")
 	}
 

@@ -6,7 +6,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
-	"io/ioutil"
+	"io"
 	"net/http"
 )
 
@@ -59,7 +59,7 @@ func (*Google) GetUserInfo(accessToken string) (*models.UserInfo, error) {
 		}
 	}()
 
-	contents, err := ioutil.ReadAll(resp.Body)
+	contents, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}

@@ -86,7 +86,7 @@ func (auth *auth) confirmAccountHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	http.Redirect(w, r, auth.config.basePath, http.StatusTemporaryRedirect)
+	http.Redirect(w, r, auth.conf.basePath, http.StatusTemporaryRedirect)
 }
 
 // resendAccountConfirmationEmailHandler maps to resend account confirmation email route
@@ -105,14 +105,14 @@ func (auth *auth) resendAccountConfirmationEmailHandler(w http.ResponseWriter, r
 		return
 	}
 
-	if auth.config.accountConfirmation != nil && !user.Confirmed {
+	if auth.conf.accountConfirmation != nil && !user.Confirmed {
 		if err := auth.beginConfirmation(user); err != nil {
 			logrus.Errorf("account confirmation failed: %v", err)
 			JSON(http.StatusBadRequest, w, "account confirmation failed")
 			return
 		}
 
-		http.Redirect(w, r, auth.config.basePath, http.StatusTemporaryRedirect)
+		http.Redirect(w, r, auth.conf.basePath, http.StatusTemporaryRedirect)
 	}
 }
 
@@ -120,7 +120,7 @@ func (auth *auth) resendAccountConfirmationEmailHandler(w http.ResponseWriter, r
 // Assign confirmation token to user and send an email and
 func (auth *auth) beginConfirmation(user *User) error {
 	token := uuid.New().String()
-	expiry := time.Now().UTC().Add(auth.config.accountConfirmation.tokenExpiry)
+	expiry := time.Now().UTC().Add(auth.conf.accountConfirmation.tokenExpiry)
 	user.ConfirmationToken = token
 	user.ConfirmationTokenExpiry = &expiry
 
@@ -128,7 +128,7 @@ func (auth *auth) beginConfirmation(user *User) error {
 		return err
 	}
 
-	return auth.config.accountConfirmation.sendConfirmationEmail(user.Email, token)
+	return auth.conf.accountConfirmation.sendConfirmationEmail(user.Email, token)
 }
 
 // confirmAccount will set confirmed to true and unset confirmation_token
@@ -162,7 +162,7 @@ func (auth *auth) confirmAccount(token string) error {
 func (auth *auth) getUserByConfirmationToken(token string) *User {
 	var usrEntity *User
 
-	if result := auth.config.Db.Where("confirmation_token", token).Find(&usrEntity); result.Error != nil {
+	if result := auth.conf.Db.Where("confirmation_token", token).Find(&usrEntity); result.Error != nil {
 		return nil
 	}
 

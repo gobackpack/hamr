@@ -2,7 +2,6 @@ package hamr
 
 import (
 	gormadapter "github.com/casbin/gorm-adapter/v3"
-	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 	"net/http"
@@ -12,18 +11,8 @@ import (
 Framework specific: Gin
 */
 
-func NewGinRouter() *gin.Engine {
-	router := gin.New()
-
-	router.Use(cors.Default())
-	router.Use(gin.Logger())
-	router.Use(gin.Recovery())
-
-	return router
-}
-
 func (auth *auth) MapAuthRoutesGin(router *gin.Engine) {
-	r := router.Group(auth.config.RouteGroup)
+	r := router.Group(auth.conf.RouteGroup)
 
 	r.GET(":provider/login", func(c *gin.Context) {
 		auth.oauthLoginHandler(c.Param("provider"), c.Writer, c.Request)
@@ -38,7 +27,7 @@ func (auth *auth) MapAuthRoutesGin(router *gin.Engine) {
 		auth.refreshTokenHandler(c.Writer, c.Request)
 	})
 
-	if auth.config.EnableLocalLogin {
+	if auth.conf.EnableLocalLogin {
 		r.POST("register", func(c *gin.Context) {
 			auth.registerHandler(c.Writer, c.Request)
 		})
@@ -49,10 +38,10 @@ func (auth *auth) MapAuthRoutesGin(router *gin.Engine) {
 }
 
 func (auth *auth) MapAccountConfirmationRoutesGin(router *gin.Engine, accountConfirmation *accountConfirmation) {
-	accountConfirmation.authPath = auth.config.authPath
-	auth.config.accountConfirmation = accountConfirmation
+	accountConfirmation.authPath = auth.conf.authPath
+	auth.conf.accountConfirmation = accountConfirmation
 
-	r := router.Group(auth.config.RouteGroup)
+	r := router.Group(auth.conf.RouteGroup)
 
 	r.Handle(http.MethodGet, "confirm/", func(c *gin.Context) {
 		auth.confirmAccountHandler(c.Writer, c.Request)
