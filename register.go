@@ -13,7 +13,7 @@ User registration module.
 */
 
 // registerHandler maps to register route
-func (auth *auth) registerHandler(w http.ResponseWriter, r *http.Request) {
+func (auth *Auth) registerHandler(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 
 	var req loginRequest
@@ -42,21 +42,21 @@ func (auth *auth) registerHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // registerUser will save user into database
-func (auth *auth) registerUser(user *User, requestData map[string]interface{}) (*User, error) {
+func (auth *Auth) registerUser(user *User, requestData map[string]interface{}) (*User, error) {
 	existingUser := auth.getUserByEmail(user.Email)
 	if existingUser != nil {
 		return nil, errors.New("user email is already registered")
 	}
 
 	argon := crypto.NewArgon2()
-	argon.Plain = user.Password
 
-	if err := argon.Hash(); err != nil {
+	hashed, err := argon.Hash(user.Password)
+	if err != nil {
 		logrus.Errorf("password hash for user %s failed: %v", user.Email, err)
 		return nil, errors.New("registration failed")
 	}
 
-	user.Password = argon.Hashed
+	user.Password = hashed
 	user.LastLogin = nil
 
 	if err := auth.addUser(user); err != nil {

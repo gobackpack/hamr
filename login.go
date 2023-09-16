@@ -23,7 +23,7 @@ type loginRequest struct {
 }
 
 // loginHandler maps to local (email + pwd) login route
-func (auth *auth) loginHandler(w http.ResponseWriter, r *http.Request) {
+func (auth *Auth) loginHandler(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 
 	var req loginRequest
@@ -42,7 +42,7 @@ func (auth *auth) loginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // oauthLoginHandler maps to :provider login route. Redirects to :provider oAuth login url
-func (auth *auth) oauthLoginHandler(provider string, w http.ResponseWriter, r *http.Request) {
+func (auth *Auth) oauthLoginHandler(provider string, w http.ResponseWriter, r *http.Request) {
 	authenticator, err := oauth.NewAuthenticator(provider, auth.conf.authPath)
 	if err != nil {
 		JSON(http.StatusBadRequest, w, err.Error())
@@ -53,7 +53,7 @@ func (auth *auth) oauthLoginHandler(provider string, w http.ResponseWriter, r *h
 }
 
 // oauthLoginCallbackHandler maps to :provider login callback route. After login :provider redirects to this route
-func (auth *auth) oauthLoginCallbackHandler(provider string, w http.ResponseWriter, r *http.Request) {
+func (auth *Auth) oauthLoginCallbackHandler(provider string, w http.ResponseWriter, r *http.Request) {
 	authenticator, err := oauth.NewAuthenticator(provider, auth.conf.authPath)
 	if err != nil {
 		JSON(http.StatusBadRequest, w, err.Error())
@@ -76,7 +76,7 @@ func (auth *auth) oauthLoginCallbackHandler(provider string, w http.ResponseWrit
 }
 
 // authenticate will login user with local login (email + pwd), validate credentials and save tokens in cache
-func (auth *auth) authenticate(email, password string) (authTokens, error) {
+func (auth *Auth) authenticate(email, password string) (authTokens, error) {
 	user := auth.getUserByEmail(email)
 	if user == nil {
 		return nil, errors.New(fmt.Sprintf("user email %s not registered", email))
@@ -114,7 +114,7 @@ func (auth *auth) authenticate(email, password string) (authTokens, error) {
 }
 
 // authenticateWithOAuth will login user with oauth provider (google, github...), save tokens in cache
-func (auth *auth) authenticateWithOAuth(userInfo *models.UserInfo, provider string) (authTokens, error) {
+func (auth *Auth) authenticateWithOAuth(userInfo *models.UserInfo, provider string) (authTokens, error) {
 	externalId := userInfo.ExternalId
 	email := userInfo.Email
 
@@ -171,8 +171,9 @@ func (auth *auth) authenticateWithOAuth(userInfo *models.UserInfo, provider stri
 func validateCredentials(user *User, password string) bool {
 	argon := crypto.NewArgon2()
 
-	argon.Hashed = user.Password
-	argon.Plain = password
+	if err := argon.Validate(user.Password, password); err != nil {
+		return false
+	}
 
-	return argon.Validate()
+	return true
 }

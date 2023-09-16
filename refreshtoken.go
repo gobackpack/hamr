@@ -12,7 +12,7 @@ Refresh token module.
 */
 
 // refreshTokenHandler maps to refresh token route
-func (auth *auth) refreshTokenHandler(w http.ResponseWriter, r *http.Request) {
+func (auth *Auth) refreshTokenHandler(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	refreshTokenRequest := map[string]string{}
 
@@ -37,10 +37,10 @@ func (auth *auth) refreshTokenHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // refreshToken will generate new pair of access and refresh tokens. Remove old access and refresh tokens from cache
-func (auth *auth) refreshToken(refreshToken string) (authTokens, error) {
+func (auth *Auth) refreshToken(refreshToken string) (authTokens, error) {
 	// get old refresh token uuid so it can be deleted from cache
-	refreshTokenClaims, valid := auth.extractRefreshTokenClaims(refreshToken)
-	if !valid {
+	refreshTokenClaims, err := auth.extractRefreshTokenClaims(refreshToken)
+	if err != nil {
 		return nil, errors.New("invalid refresh_token")
 	}
 

@@ -6,9 +6,9 @@ import (
 	gormadapter "github.com/casbin/gorm-adapter/v3"
 	"github.com/gobackpack/hamr/internal/cache"
 	"github.com/gobackpack/hamr/internal/httpserver"
+	"github.com/gobackpack/hamr/internal/random"
 	"github.com/gobackpack/hamr/oauth"
 	"github.com/gobackpack/jwt"
-	"github.com/gobackpack/random"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
@@ -22,14 +22,14 @@ Main module.
 Responsible for tokens (access, refresh), claims and sessions.
 */
 
-// auth main api
-type auth struct {
-	conf                 *config
+// Auth main api
+type Auth struct {
+	conf                 *Config
 	PostRegisterCallback func(user *User, requestData map[string]interface{}) error
 }
 
-// config for *auth api
-type config struct {
+// Config for *Auth api
+type Config struct {
 	Scheme           string
 	Host             string
 	Port             string
@@ -67,18 +67,12 @@ type tokenClaims map[string]interface{}
 // authTokens contains pair of access_token and refresh_token after authentication. These token pairs are returned to the user
 type authTokens map[string]string
 
-// identity to construct after authorisation
-type identity interface {
-	Id() int
-	Email() string
-}
-
-// claimsIdentity will use claims from access token to construct identity
-type claimsIdentity struct {
+// ClaimsIdentity will use claims from access token to construct Identity
+type ClaimsIdentity struct {
 	claims map[string]interface{}
 }
 
-func New(conf *config) *auth {
+func New(conf *Config) *Auth {
 	conf.Host = strings.Trim(conf.Host, "/")
 	conf.RouteGroup = strings.Trim(conf.RouteGroup, "/")
 	conf.basePath = conf.Scheme + "://" + conf.Host + ":" + conf.Port
@@ -92,18 +86,18 @@ func New(conf *config) *auth {
 	conf.casbinAdapter = adapter
 	conf.CasbinPolicy = casbinPolicyModel()
 
-	hamrAuth := &auth{
+	auth := &Auth{
 		conf: conf,
 	}
 
 	runMigrations(conf.Db)
 	seedCasbinPolicy(conf.Db)
 
-	return hamrAuth
+	return auth
 }
 
-func NewConfig(db *gorm.DB, cacheStorage cache.Storage) *config {
-	return &config{
+func NewConfig(db *gorm.DB, cacheStorage cache.Storage) *Config {
+	return &Config{
 		Scheme:             "http",
 		Host:               "localhost",
 		Port:               "8080",
@@ -118,23 +112,23 @@ func NewConfig(db *gorm.DB, cacheStorage cache.Storage) *config {
 }
 
 // RegisterProvider will append oauth.SupportedProviders with passed Provider.
-func (auth *auth) RegisterProvider(name string, provider oauth.Provider) {
+func (auth *Auth) RegisterProvider(name string, provider oauth.Provider) {
 	oauth.SupportedProviders[name] = provider
 }
 
 // CasbinAdapter will return initialized Casbin adapter. Required for protection with Casbin policies
-func (auth *auth) CasbinAdapter() *gormadapter.Adapter {
+func (auth *Auth) CasbinAdapter() *gormadapter.Adapter {
 	return auth.conf.casbinAdapter
 }
 
 // Claims will extract claims from access token from request
-func (auth *auth) Claims(w http.ResponseWriter, r *http.Request) (identity, error) {
+func (auth *Auth) Claims(w http.ResponseWriter, r *http.Request) (*ClaimsIdentity, error) {
 	claims, err := auth.getClaimsFromRequest(w, r)
 	if err != nil {
 		return nil, err
 	}
 
-	return &claimsIdentity{
+	return &ClaimsIdentity{
 		claims: claims,
 	}, nil
 }
@@ -162,7 +156,7 @@ func JSON(statusCode int, w http.ResponseWriter, data interface{}) {
 }
 
 // createSession will create *User login session. Generate access and refresh tokens and save both tokens in cache storage
-func (auth *auth) createSession(claims tokenClaims) (authTokens, error) {
+func (auth *Auth) createSession(claims tokenClaims) (authTokens, error) {
 	if err := validateClaims(claims); err != nil {
 		return nil, err
 	}
@@ -184,7 +178,7 @@ func (auth *auth) createSession(claims tokenClaims) (authTokens, error) {
 }
 
 // generateTokens will generate pair of access and refresh tokens
-func (auth *auth) generateTokens(claims tokenClaims) (*tokenDetails, error) {
+func (auth *Auth) generateTokens(claims tokenClaims) (*tokenDetails, error) {
 	accessTokenUuid, accessTokenValue, err := generateToken(auth.conf.accessTokenSecret, auth.conf.accessTokenExpiry, claims)
 	if err != nil {
 		return nil, err
@@ -206,7 +200,7 @@ func (auth *auth) generateTokens(claims tokenClaims) (*tokenDetails, error) {
 }
 
 // storeTokensInCache will save access and refresh tokens in cache
-func (auth *auth) storeTokensInCache(sub interface{}, td *tokenDetails) error {
+func (auth *Auth) storeTokensInCache(sub interface{}, td *tokenDetails) error {
 	// cross-reference properties are created so we can later easily find connection between access and refresh tokens
 	// it's needed for easier cleanup on logout and refresh/token
 
@@ -232,9 +226,9 @@ func (auth *auth) storeTokensInCache(sub interface{}, td *tokenDetails) error {
 }
 
 // destroySession will remove access and refresh tokens from cache
-func (auth *auth) destroySession(accessToken string) error {
-	accessTokenClaims, valid := auth.extractAccessTokenClaims(accessToken)
-	if !valid {
+func (auth *Auth) destroySession(accessToken string) error {
+	accessTokenClaims, err := auth.extractAccessTokenClaims(accessToken)
+	if err != nil {
 		return errors.New("invalid access_token")
 	}
 
@@ -266,17 +260,17 @@ func (auth *auth) destroySession(accessToken string) error {
 }
 
 // extractAccessTokenClaims will validate and extract access token claims. Access token secret is used for validation
-func (auth *auth) extractAccessTokenClaims(accessToken string) (map[string]interface{}, bool) {
+func (auth *Auth) extractAccessTokenClaims(accessToken string) (map[string]interface{}, error) {
 	return extractToken(accessToken, auth.conf.accessTokenSecret)
 }
 
 // extractRefreshTokenClaims will validate and extract refresh token. Refresh token secret is used for validation
-func (auth *auth) extractRefreshTokenClaims(refreshToken string) (map[string]interface{}, bool) {
+func (auth *Auth) extractRefreshTokenClaims(refreshToken string) (map[string]interface{}, error) {
 	return extractToken(refreshToken, auth.conf.refreshTokenSecret)
 }
 
 // getTokenFromCache will get and unmarshal token from cache
-func (auth *auth) getTokenFromCache(tokenUuid string) (map[string]interface{}, error) {
+func (auth *Auth) getTokenFromCache(tokenUuid string) (map[string]interface{}, error) {
 	cachedTokenBytes, err := auth.conf.CacheStorage.Get(tokenUuid)
 	if err != nil {
 		return nil, errors.New("token is no longer active")
@@ -290,26 +284,26 @@ func (auth *auth) getTokenFromCache(tokenUuid string) (map[string]interface{}, e
 	return cachedToken, nil
 }
 
-func (auth *auth) getClaimsFromRequest(w http.ResponseWriter, r *http.Request) (map[string]interface{}, error) {
+func (auth *Auth) getClaimsFromRequest(w http.ResponseWriter, r *http.Request) (map[string]interface{}, error) {
 	_, token := getAccessTokenFromRequest(w, r)
 	if strings.TrimSpace(token) == "" {
 		return nil, errors.New("token not found")
 	}
 
-	claims, valid := auth.extractAccessTokenClaims(token)
-	if claims == nil || !valid {
+	claims, err := auth.extractAccessTokenClaims(token)
+	if claims == nil || err != nil {
 		return nil, errors.New("invalid access token claims")
 	}
 
 	return claims, nil
 }
 
-func (cIdentity *claimsIdentity) Id() int {
+func (cIdentity *ClaimsIdentity) Id() int {
 	id := cIdentity.claims["sub"]
 	return int(id.(float64))
 }
 
-func (cIdentity *claimsIdentity) Email() string {
+func (cIdentity *ClaimsIdentity) Email() string {
 	email := cIdentity.claims["email"]
 	return email.(string)
 }
@@ -361,12 +355,12 @@ func generateToken(tokenSecret []byte, tokenExpiry time.Duration, claims tokenCl
 }
 
 // extractToken will validate and extract claims from given token
-func extractToken(token string, secret []byte) (map[string]interface{}, bool) {
+func extractToken(token string, secret []byte) (map[string]interface{}, error) {
 	jwtToken := &jwt.Token{
 		Secret: secret,
 	}
 
-	return jwtToken.ValidateAndExtract(token)
+	return jwtToken.Validate(token)
 }
 
 // generateAuthClaims for access token

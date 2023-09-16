@@ -72,7 +72,7 @@ func (accountConfirmation *accountConfirmation) sendConfirmationEmail(registered
 }
 
 // confirmAccountHandler maps to account confirmation route
-func (auth *auth) confirmAccountHandler(w http.ResponseWriter, r *http.Request) {
+func (auth *Auth) confirmAccountHandler(w http.ResponseWriter, r *http.Request) {
 	token := r.URL.Query().Get("token")
 
 	if strings.TrimSpace(token) == "" {
@@ -90,7 +90,7 @@ func (auth *auth) confirmAccountHandler(w http.ResponseWriter, r *http.Request) 
 }
 
 // resendAccountConfirmationEmailHandler maps to resend account confirmation email route
-func (auth *auth) resendAccountConfirmationEmailHandler(w http.ResponseWriter, r *http.Request) {
+func (auth *Auth) resendAccountConfirmationEmailHandler(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	requestData := &resendConfirmationRequest{}
 
@@ -118,7 +118,7 @@ func (auth *auth) resendAccountConfirmationEmailHandler(w http.ResponseWriter, r
 
 // beginConfirmation will start the process of account confirmation.
 // Assign confirmation token to user and send an email and
-func (auth *auth) beginConfirmation(user *User) error {
+func (auth *Auth) beginConfirmation(user *User) error {
 	token := uuid.New().String()
 	expiry := time.Now().UTC().Add(auth.conf.accountConfirmation.tokenExpiry)
 	user.ConfirmationToken = token
@@ -132,7 +132,7 @@ func (auth *auth) beginConfirmation(user *User) error {
 }
 
 // confirmAccount will set confirmed to true and unset confirmation_token
-func (auth *auth) confirmAccount(token string) error {
+func (auth *Auth) confirmAccount(token string) error {
 	user := auth.getUserByConfirmationToken(token)
 
 	if user == nil {
@@ -159,7 +159,7 @@ func (auth *auth) confirmAccount(token string) error {
 
 // getUserByConfirmationToken will get *User by confirmation from database.
 // Used for account confirmation
-func (auth *auth) getUserByConfirmationToken(token string) *User {
+func (auth *Auth) getUserByConfirmationToken(token string) *User {
 	var usrEntity *User
 
 	if result := auth.conf.Db.Where("confirmation_token", token).Find(&usrEntity); result.Error != nil {

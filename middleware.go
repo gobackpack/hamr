@@ -3,6 +3,7 @@ package hamr
 import (
 	"errors"
 	"fmt"
+	"github.com/casbin/casbin/v2"
 	"github.com/casbin/casbin/v2/model"
 	gormadapter "github.com/casbin/gorm-adapter/v3"
 	"net/http"
@@ -11,7 +12,7 @@ import (
 
 // authorize middleware will check if request is authorized.
 // If adapter is passed Casbin policy will be checked as well
-func (auth *auth) authorize(obj, act string, adapter *gormadapter.Adapter, w http.ResponseWriter, r *http.Request) error {
+func (auth *Auth) authorize(obj, act string, adapter *gormadapter.Adapter, w http.ResponseWriter, r *http.Request) error {
 	claims, err := auth.getClaimsFromRequest(w, r)
 	if err != nil {
 		return err

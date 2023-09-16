@@ -11,7 +11,7 @@ import (
 Framework specific: Gin
 */
 
-func (auth *auth) MapAuthRoutesGin(router *gin.Engine) {
+func (auth *Auth) MapAuthRoutesGin(router *gin.Engine) {
 	r := router.Group(auth.conf.RouteGroup)
 
 	r.GET(":provider/login", func(c *gin.Context) {
@@ -37,7 +37,7 @@ func (auth *auth) MapAuthRoutesGin(router *gin.Engine) {
 	}
 }
 
-func (auth *auth) MapAccountConfirmationRoutesGin(router *gin.Engine, accountConfirmation *accountConfirmation) {
+func (auth *Auth) MapAccountConfirmationRoutesGin(router *gin.Engine, accountConfirmation *accountConfirmation) {
 	accountConfirmation.authPath = auth.conf.authPath
 	auth.conf.accountConfirmation = accountConfirmation
 
@@ -52,7 +52,7 @@ func (auth *auth) MapAccountConfirmationRoutesGin(router *gin.Engine, accountCon
 	})
 }
 
-func (auth *auth) AuthorizeGinRequest(obj, act string, adapter *gormadapter.Adapter) gin.HandlerFunc {
+func (auth *Auth) AuthorizeGinRequest(obj, act string, adapter *gormadapter.Adapter) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		if err := auth.authorize(obj, act, adapter, ctx.Writer, ctx.Request); err != nil {
 			logrus.Error(err)

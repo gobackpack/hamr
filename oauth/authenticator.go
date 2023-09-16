@@ -17,16 +17,16 @@ const (
 	stateExpiry              = time.Minute * 2
 )
 
-// SupportedProviders are registered oauth providers for *authenticator
+// SupportedProviders are registered oauth providers for *Authenticator
 var SupportedProviders = map[string]Provider{}
 
-// authenticator is responsible for oauth logins, oAuth2 configuration setup
-type authenticator struct {
+// Authenticator is responsible for oauth logins, oAuth2 configuration setup
+type Authenticator struct {
 	provider Provider
 	conf     *oauth2.Config
 }
 
-// Provider specific requirements for *authenticator
+// Provider specific requirements for *Authenticator
 type Provider interface {
 	Credentials
 
@@ -41,8 +41,8 @@ type Credentials interface {
 	ClientSecret() string
 }
 
-// NewAuthenticator will setup *authenticator, oAuth2 configuration
-func NewAuthenticator(provider, authPath string) (*authenticator, error) {
+// NewAuthenticator will set up *Authenticator, oAuth2 configuration
+func NewAuthenticator(provider, authPath string) (*Authenticator, error) {
 	providerInstance, ok := SupportedProviders[provider]
 	if !ok || providerInstance == nil {
 		return nil, errors.New("unsupported provider: " + provider)
@@ -53,8 +53,8 @@ func NewAuthenticator(provider, authPath string) (*authenticator, error) {
 	return newAuthenticator(providerInstance, redirectUrl)
 }
 
-func newAuthenticator(providerInstance Provider, redirectUrl string) (*authenticator, error) {
-	auth := &authenticator{
+func newAuthenticator(providerInstance Provider, redirectUrl string) (*Authenticator, error) {
+	auth := &Authenticator{
 		provider: providerInstance,
 		conf: &oauth2.Config{
 			ClientID:     providerInstance.ClientId(),
@@ -69,7 +69,7 @@ func newAuthenticator(providerInstance Provider, redirectUrl string) (*authentic
 }
 
 // RedirectToLoginUrl will redirect to oauth provider login url
-func (auth *authenticator) RedirectToLoginUrl(w http.ResponseWriter, r *http.Request) {
+func (auth *Authenticator) RedirectToLoginUrl(w http.ResponseWriter, r *http.Request) {
 	oAuthState, err := auth.setLoginAntiForgeryCookie(w, r)
 	if err != nil {
 		logrus.Error("failed to generate CSRF token")
@@ -82,7 +82,7 @@ func (auth *authenticator) RedirectToLoginUrl(w http.ResponseWriter, r *http.Req
 }
 
 // GetUserInfo from oauth provider
-func (auth *authenticator) GetUserInfo(w http.ResponseWriter, r *http.Request) (*models.UserInfo, error) {
+func (auth *Authenticator) GetUserInfo(w http.ResponseWriter, r *http.Request) (*models.UserInfo, error) {
 	token, err := auth.exchangeCodeForToken(w, r)
 	if err != nil {
 		logrus.Errorf("failed to exchange code for token: %v", err)
@@ -99,7 +99,7 @@ func (auth *authenticator) GetUserInfo(w http.ResponseWriter, r *http.Request) (
 }
 
 // exchangeCodeForToken will validate state and exchange code for oauth token
-func (auth *authenticator) exchangeCodeForToken(w http.ResponseWriter, r *http.Request) (*oauth2.Token, error) {
+func (auth *Authenticator) exchangeCodeForToken(w http.ResponseWriter, r *http.Request) (*oauth2.Token, error) {
 	oAuthStateSaved, oAuthStateErr := r.Cookie(oAuthLoginAntiForgeryKey)
 	oAuthState := r.FormValue("state")
 	oAuthStateCode := r.FormValue("code")
@@ -122,7 +122,7 @@ func (auth *authenticator) exchangeCodeForToken(w http.ResponseWriter, r *http.R
 
 // setLoginAntiForgeryCookie will generate random state string and save it in cookies.
 // CSRF protection
-func (auth *authenticator) setLoginAntiForgeryCookie(w http.ResponseWriter, r *http.Request) (string, error) {
+func (auth *Authenticator) setLoginAntiForgeryCookie(w http.ResponseWriter, r *http.Request) (string, error) {
 	b := make([]byte, 16)
 	_, err := rand.Read(b)
 	if err != nil {

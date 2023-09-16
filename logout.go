@@ -9,7 +9,7 @@ Logout module.
 */
 
 // logoutHandler maps to log out route
-func (auth *auth) logoutHandler(w http.ResponseWriter, r *http.Request) {
+func (auth *Auth) logoutHandler(w http.ResponseWriter, r *http.Request) {
 	_, accessToken := getAccessTokenFromRequest(w, r)
 
 	if err := auth.destroySession(accessToken); err != nil {
