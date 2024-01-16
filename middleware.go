@@ -11,7 +11,7 @@ import (
 )
 
 // authorize middleware will check if request is authorized.
-// If adapter is passed Casbin policy will be checked as well
+// If adapter is passed Casbin policy will be checked as well.
 func (auth *Auth) authorize(obj, act string, adapter *gormadapter.Adapter, w http.ResponseWriter, r *http.Request) error {
 	claims, err := auth.getClaimsFromRequest(w, r)
 	if err != nil {

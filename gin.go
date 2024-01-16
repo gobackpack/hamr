@@ -37,7 +37,7 @@ func (auth *Auth) MapAuthRoutesGin(router *gin.Engine) {
 	}
 }
 
-func (auth *Auth) MapAccountConfirmationRoutesGin(router *gin.Engine, accountConfirmation *accountConfirmation) {
+func (auth *Auth) MapAccountConfirmationRoutesGin(router *gin.Engine, accountConfirmation *AccountConfirmation) {
 	accountConfirmation.authPath = auth.conf.authPath
 	auth.conf.accountConfirmation = accountConfirmation
 

@@ -16,8 +16,8 @@ import (
 Login module.
 */
 
-// loginRequest http API model
-type loginRequest struct {
+// LoginRequest http API model.
+type LoginRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
@@ -26,7 +26,7 @@ type loginRequest struct {
 func (auth *Auth) loginHandler(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 
-	var req loginRequest
+	var req LoginRequest
 	if err := decoder.Decode(&req); err != nil {
 		JSON(http.StatusUnprocessableEntity, w, err.Error())
 		return

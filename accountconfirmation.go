@@ -21,8 +21,8 @@ const (
 	confirmationEmailLinkText = "Confirm"
 )
 
-// accountConfirmation api
-type accountConfirmation struct {
+// AccountConfirmation api.
+type AccountConfirmation struct {
 	Subject  string
 	Body     string
 	LinkText string
@@ -33,13 +33,13 @@ type accountConfirmation struct {
 	from        string
 }
 
-// resendConfirmationRequest
-type resendConfirmationRequest struct {
+// ResendConfirmationRequest data.
+type ResendConfirmationRequest struct {
 	Email string `json:"email"`
 }
 
-// NewAccountConfirmation will setup mailer and default configurations for *accountConfirmation api
-func NewAccountConfirmation(host string, port int, username string, password string, useEncryption bool) *accountConfirmation {
+// NewAccountConfirmation will setup mailer and default configurations for *AccountConfirmation api
+func NewAccountConfirmation(host string, port int, username string, password string, useEncryption bool) *AccountConfirmation {
 	mailConfig := &mailerConfig{
 		host:          host,
 		port:          port,
@@ -48,7 +48,7 @@ func NewAccountConfirmation(host string, port int, username string, password str
 		useEncryption: useEncryption,
 	}
 
-	return &accountConfirmation{
+	return &AccountConfirmation{
 		Subject:     confirmationEmailSubject,
 		Body:        confirmationEmailBody,
 		LinkText:    confirmationEmailLinkText,
@@ -59,7 +59,7 @@ func NewAccountConfirmation(host string, port int, username string, password str
 }
 
 // sendConfirmationEmail will send confirmation email to user
-func (accountConfirmation *accountConfirmation) sendConfirmationEmail(registeredUserEmail string, token string) error {
+func (accountConfirmation *AccountConfirmation) sendConfirmationEmail(registeredUserEmail string, token string) error {
 	endpoint := "<a href=\"" + accountConfirmation.authPath + confirmationEndpoint + token + "\">" + accountConfirmation.LinkText + "</a>"
 
 	return accountConfirmation.mailer.send(
@@ -92,7 +92,7 @@ func (auth *Auth) confirmAccountHandler(w http.ResponseWriter, r *http.Request) 
 // resendAccountConfirmationEmailHandler maps to resend account confirmation email route
 func (auth *Auth) resendAccountConfirmationEmailHandler(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
-	requestData := &resendConfirmationRequest{}
+	requestData := &ResendConfirmationRequest{}
 
 	if err := decoder.Decode(&requestData); err != nil {
 		JSON(http.StatusUnprocessableEntity, w, "invalid request data")

@@ -47,7 +47,7 @@ type Config struct {
 	basePath            string
 	authPath            string
 	casbinAdapter       *gormadapter.Adapter
-	accountConfirmation *accountConfirmation
+	accountConfirmation *AccountConfirmation
 }
 
 // tokenDetails holds access and refresh token details
