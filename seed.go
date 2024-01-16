@@ -16,7 +16,7 @@ var rules = []*casbinRule{
 	{ptype: "p", v0: "user", v1: "res", v2: "write"},
 	{ptype: "p", v0: "user", v1: "res", v2: "delete"},
 	{ptype: "g", v0: "admin", v1: "user"}, // assign user policy to admin group
-	{ptype: "g", v0: "1", v1: "admin"},    // assign user id 1 admin policy
+	//{ptype: "g", v0: "1", v1: "admin"},    // assign user id 1 admin group
 }
 
 func seedCasbinPolicy(db *gorm.DB) {

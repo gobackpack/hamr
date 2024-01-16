@@ -114,7 +114,7 @@ func main() {
 	})
 
 	// example #2: protected with roles/policy
-	router.GET("protected/policy", auth.AuthorizeGinRequest("usr", "read", auth.CasbinAdapter()), func(ctx *gin.Context) {
+	router.GET("protected/policy", auth.AuthorizeGinRequest("res", "delete", auth.CasbinAdapter()), func(ctx *gin.Context) {
 		claims, err := auth.Claims(ctx.Writer, ctx.Request)
 		if err != nil {
 			logrus.Error(err)
